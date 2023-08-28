@@ -68,8 +68,7 @@ class CaseRunner(BaseModel):
     @property
     def normalize(self) -> bool:
         assert self.db
-        return isinstance(self.db, (Milvus, ZillizCloud)) and \
-            self.ca.dataset.data.metric_type == MetricType.COSINE
+        return True
 
     def init_db(self, drop_old: bool = True) -> None:
         db_cls = self.config.db.init_cls
@@ -137,7 +136,8 @@ class CaseRunner(BaseModel):
                 )
 
             self._init_search_runner()
-            m.recall, m.serial_latency_p99 = self._serial_search()
+            m.recall, m.serial_latency_p99, m.load_mem = self._serial_search()
+
             m.qps = self._conc_search()
         except Exception as e:
             log.warning(f"Failed to run performance case, reason = {e}")
@@ -158,7 +158,7 @@ class CaseRunner(BaseModel):
         finally:
             runner = None
 
-    def _serial_search(self) -> tuple[float, float]:
+    def _serial_search(self) -> tuple[float, float, int]:
         """Performance serial tests, search the entire test data once,
         calculate the recall, serial_latency_p99
 

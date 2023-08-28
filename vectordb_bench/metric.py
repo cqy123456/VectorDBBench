@@ -19,7 +19,7 @@ class Metric:
     qps: float = 0.0
     serial_latency_p99: float = 0.0
     recall: float = 0.0
-
+    load_mem: int = 0
 
 QURIES_PER_DOLLAR_METRIC = "QP$ (Quries per Dollar)"
 LOAD_DURATION_METRIC = "load_duration"
@@ -27,12 +27,14 @@ SERIAL_LATENCY_P99_METRIC = "serial_latency_p99"
 MAX_LOAD_COUNT_METRIC = "max_load_count"
 QPS_METRIC = "qps"
 RECALL_METRIC = "recall"
+LOAD_MEM_METRIC = "load_mem"
 
 metricUnitMap = {
     LOAD_DURATION_METRIC: "s",
     SERIAL_LATENCY_P99_METRIC: "ms",
     MAX_LOAD_COUNT_METRIC: "K",
     QURIES_PER_DOLLAR_METRIC: "K",
+    LOAD_MEM_METRIC: "MB",
 }
 
 lowerIsBetterMetricList = [
@@ -46,6 +48,7 @@ metricOrder = [
     LOAD_DURATION_METRIC,
     SERIAL_LATENCY_P99_METRIC,
     MAX_LOAD_COUNT_METRIC,
+    LOAD_MEM_METRIC,
 ]
 
 

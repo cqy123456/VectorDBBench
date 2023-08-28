@@ -168,6 +168,7 @@ class SerialSearchRunner:
         else:
             self.test_data = test_data
         self.ground_truth = ground_truth
+        self.load_mem = self.db.load_mem
 
     def search(self, args: tuple[list, pd.DataFrame]):
         log.info(f"{mp.current_process().name:14} start search the entire test_data to get recall and latency")
@@ -178,42 +179,31 @@ class SerialSearchRunner:
             log.debug(f"ground truth size: {ground_truth.columns}, shape: {ground_truth.shape}")
 
             latencies, recalls = [], []
-            for idx, emb in enumerate(test_data):
-                s = time.perf_counter()
-                try:
-                    results = self.db.search_embedding(
-                        emb,
-                        self.k,
-                        self.filters,
-                    )
-
-                except Exception as e:
-                    log.warning(f"VectorDB search_embedding error: {e}")
-                    traceback.print_exc(chain=True)
-                    raise e from None
-
-                latencies.append(time.perf_counter() - s)
-
+            quries = [emb for emb in test_data]
+            s = time.perf_counter()
+            results = self.db.search_batch(
+                quries,
+                self.k,
+                self.filters,
+            )
+            latencies.append(time.perf_counter() - s)
+            for idx, res in enumerate(results):
                 gt = ground_truth['neighbors_id'][idx]
-                recalls.append(calc_recall(self.k, gt[:self.k], results))
-
-
-                if len(latencies) % 100 == 0:
-                    log.debug(f"({mp.current_process().name:14}) search_count={len(latencies):3}, latest_latency={latencies[-1]}, latest recall={recalls[-1]}")
-
-        avg_latency = round(np.mean(latencies), 4)
+                recalls.append(calc_recall(self.k, gt[:self.k], res))
+        avg_latency = round(np.mean(latencies) / len(quries), 4)
         avg_recall = round(np.mean(recalls), 4)
         cost = round(np.sum(latencies), 4)
         p99 = round(np.percentile(latencies, 99), 4)
+        qps = round(1.0 / avg_latency, 4)
         log.info(
             f"{mp.current_process().name:14} search entire test_data: "
             f"cost={cost}s, "
-            f"queries={len(latencies)}, "
+            f"queries={len(quries)}, "
             f"avg_recall={avg_recall}, "
             f"avg_latency={avg_latency}, "
-            f"p99={p99}"
+            f"QPS@(NQ = {len(quries)}) = {qps}"
          )
-        return (avg_recall, p99)
+        return (avg_recall, p99, self.load_mem)
 
 
     def _run_in_subprocess(self) -> tuple[float, float]:

@@ -4,6 +4,7 @@ import logging
 import time
 from contextlib import contextmanager
 from typing import Iterable, Type
+import knowhere
 
 from pymilvus import Collection, utility
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusException

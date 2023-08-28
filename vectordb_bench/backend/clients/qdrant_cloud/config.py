@@ -5,14 +5,13 @@ from qdrant_client.models import Distance
 
 
 class QdrantConfig(DBConfig):
-    url: SecretStr
-    api_key: SecretStr
+    index_type: SecretStr
+    search_params: SecretStr
 
     def to_dict(self) -> dict:
         return {
-            "url": self.url.get_secret_value(),
-            "api_key": self.api_key.get_secret_value(),
-            "prefer_grpc": True,
+            "index_type": self.index_type.get_secret_value(),
+            "search_params": int(self.search_params.get_secret_value())
         }
 
 class QdrantIndexConfig(BaseModel, DBCaseConfig):

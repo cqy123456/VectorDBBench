@@ -4,7 +4,10 @@ import logging
 import time
 from contextlib import contextmanager
 from typing import Type
-
+import faiss
+import psutil
+import os
+import numpy as np
 from ..api import VectorDB, DBConfig, DBCaseConfig, IndexType
 from .config import QdrantConfig, QdrantIndexConfig
 from qdrant_client.http.models import (
@@ -34,20 +37,31 @@ class QdrantCloud(VectorDB):
         **kwargs,
     ):
         """Initialize wrapper around the QdrantCloud vector database."""
-        self.db_config = db_config
-        self.case_config = db_case_config
-        self.collection_name = collection_name
+        print("db_config: ", db_config)
 
-        self._primary_field = "pk"
-        self._vector_field = "vector"
-
-        tmp_client = QdrantClient(**self.db_config)
-        if drop_old:
-            log.info(f"QdrantCloud client drop_old collection: {self.collection_name}")
-            tmp_client.delete_collection(self.collection_name)
-
-        self._create_collection(dim, tmp_client)
-        tmp_client = None
+        self._index_key = db_config["index_type"]
+        self._search_params = db_config["search_params"]
+        self._index_path = self._index_key + ".bin"
+        self._train_set = []
+        self._train_ids = []
+        self._train = True
+        self._dim = dim
+        self.index = faiss.index_factory(self._dim, self._index_key)
+        self.load_mem = 0
+        if os.path.exists(self._index_path):
+            print("index path exist , loading index from index file")
+            process = psutil.Process()
+            def load_index(file_name):
+                self.index = faiss.read_index(self._index_path)
+                return 
+            mem_beg = process.memory_info()
+            load_index(self._index_path)
+            mem_end = process.memory_info()
+            rss = (mem_end.rss - mem_beg.rss) / 1024 / 1024
+            vms = (mem_end.vms - mem_beg.vms) / 1024 / 1024
+            print('Current memory usage after load: RSS=%.2fMB, VMS=%.2fMB' % (rss, vms))
+            self.load_mem = rss
+            self._train = False
 
     @classmethod
     def config_cls(cls) -> Type[DBConfig]:
@@ -65,52 +79,27 @@ class QdrantCloud(VectorDB):
             >>>     self.insert_embeddings()
             >>>     self.search_embedding()
         """
-        self.qdrant_client = QdrantClient(**self.db_config)
+        if os.path.exists(self._index_path) and self._train:
+            print("index path exist , loading index from index file")
+            process = psutil.Process()
+            mem_beg = process.memory_info()
+            self.index = faiss.read_index(self._index_path)
+            mem_end = process.memory_info()
+            rss = (mem_end.rss - mem_beg.rss) / 1024 / 1024
+            vms = (mem_end.vms - mem_beg.vms) / 1024 / 1024
+            print('Current memory usage after load: RSS=%.2fMB, VMS=%.2fMB' % (rss, vms))
+            self._train = False
+        if self._index_key.find("HNSW") != -1:
+            self.index.efSearch = self._search_params
+        if self._index_key.find("IVF") != -1:
+            self.index.nprobe = self._search_params
         yield
-        self.qdrant_client = None
-        del(self.qdrant_client)
 
     def ready_to_load(self):
-        pass
-
+        return 
 
     def optimize(self):
-        assert self.qdrant_client, "Please call self.init() before"
-        # wait for vectors to be fully indexed
-        SECONDS_WAITING_FOR_INDEXING_API_CALL = 5
-        try:
-            while True:
-                info = self.qdrant_client.get_collection(self.collection_name)
-                time.sleep(SECONDS_WAITING_FOR_INDEXING_API_CALL)
-                if info.status != CollectionStatus.GREEN:
-                    continue
-                if info.status == CollectionStatus.GREEN:
-                    log.info(f"Stored vectors: {info.vectors_count}, Indexed vectors: {info.indexed_vectors_count}, Collection status: {info.indexed_vectors_count}")
-                    return
-        except Exception as e:
-            log.warning(f"QdrantCloud ready to search error: {e}")
-            raise e from None
-
-    def _create_collection(self, dim, qdrant_client: int):
-        log.info(f"Create collection: {self.collection_name}")
-
-        try:
-            qdrant_client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=VectorParams(size=dim, distance=self.case_config.index_param()["distance"])
-            )
-
-            qdrant_client.create_payload_index(
-                collection_name=self.collection_name,
-                field_name=self._primary_field,
-                field_schema=PayloadSchemaType.INTEGER,
-            )
-
-        except Exception as e:
-            if "already exists!" in str(e):
-                return
-            log.warning(f"Failed to create collection: {self.collection_name} error: {e}")
-            raise e from None
+        pass
 
     def insert_embeddings(
         self,
@@ -118,20 +107,22 @@ class QdrantCloud(VectorDB):
         metadata: list[int],
         **kwargs,
     ) -> (int, Exception):
-        """Insert embeddings into Milvus. should call self.init() first"""
-        assert self.qdrant_client is not None
-        try:
-            # TODO: counts
-            _ = self.qdrant_client.upsert(
-                collection_name=self.collection_name,
-                wait=True,
-                points=Batch(ids=metadata, payloads=[{self._primary_field: v} for v in metadata], vectors=embeddings)
-            )
-        except Exception as e:
-            log.info(f"Failed to insert data, {e}")
-            return 0, e
-        else:
+        assert self.index != None
+        if (self._train == False):
             return len(metadata), None
+        for i in range(len(embeddings)):
+            self._train_set.append(np.array(embeddings[i]))
+            self._train_ids.append(metadata[i])
+        if kwargs.get("last_batch"):
+            print("begin to train faiss index", type(self._train_set))
+            self._train_set = np.array(self._train_set)
+            self.index.train(self._train_set)
+            print("add data into faiss index")
+            self.index.add_with_ids(self._train_set, self._train_ids)
+            self._train_set = None
+            print("write faiss index to " + self._index_path)
+            faiss.write_index(self.index, self._index_path)
+        return len(metadata), None
 
     def search_embedding(
         self,
@@ -143,26 +134,19 @@ class QdrantCloud(VectorDB):
         """Perform a search on a query embedding and return results with score.
         Should call self.init() first.
         """
-        assert self.qdrant_client is not None
-
-        f = None
-        if filters:
-            f = Filter(
-                must=[FieldCondition(
-                    key = self._primary_field,
-                    range = Range(
-                        gt=filters.get('id'),
-                    ),
-                )]
-            )
-
-        res = self.qdrant_client.search(
-            collection_name=self.collection_name,
-            query_vector=query,
-            limit=k,
-            query_filter=f,
-            #  with_payload=True,
-        ),
-
-        ret = [result.id for result in res[0]]
-        return ret
+        D, I = self.index.search(np.array(query).reshape((1, self._dim)), k = k)
+        
+        return [i for i in I[0]]
+    
+    def search_batch(
+        self,
+        query: list[list[float]],
+        k: int = 100,
+        filters: dict | None = None,
+        timeout: int | None = None,
+    ) -> list[int]:
+        """Perform a search on a query embedding and return results with score.
+        Should call self.init() first.
+        """
+        D, I = self.index.search(np.stack(query), k = k)
+        return I

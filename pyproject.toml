@@ -42,6 +42,7 @@ dependencies = [
     "sqlalchemy",
     "redis",
     "chromadb",
+    "faiss-cpu"
 ]
 dynamic = ["version"]
 

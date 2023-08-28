@@ -118,7 +118,7 @@ class QdrantCloud(VectorDB):
             self._train_set = np.array(self._train_set)
             self.index.train(self._train_set)
             print("add data into faiss index")
-            self.index.add_with_ids(self._train_set, self._train_ids)
+            self.index.add(self._train_set)
             self._train_set = None
             print("write faiss index to " + self._index_path)
             faiss.write_index(self.index, self._index_path)

@@ -5,8 +5,8 @@ from qdrant_client.models import Distance
 
 
 class QdrantConfig(DBConfig):
-    index_type: SecretStr
-    search_params: SecretStr
+    index_type: SecretStr = "IVF1024,PQ384"
+    search_params: SecretStr = "40"
 
     def to_dict(self) -> dict:
         return {

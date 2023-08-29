@@ -90,9 +90,10 @@ class QdrantCloud(VectorDB):
             print('Current memory usage after load: RSS=%.2fMB, VMS=%.2fMB' % (rss, vms))
             self._train = False
         if self._index_key.find("HNSW") != -1:
-            self.index.efSearch = self._search_params
+            faiss.ParameterSpace().set_index_parameter(self.index, "efSearch", self._search_params)
+    
         if self._index_key.find("IVF") != -1:
-            self.index.nprobe = self._search_params
+            faiss.ParameterSpace().set_index_parameter(self.index, "nprobe", self._search_params)
         yield
 
     def ready_to_load(self):

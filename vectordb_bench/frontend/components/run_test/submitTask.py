@@ -35,9 +35,14 @@ def taskLabelInput(st):
 
 
 def controlPanel(st, tasks, taskLabel, isAllValid):
+    index_already_exists = st.checkbox("Index already exists", value=False)
+    def runHandler():
+        benchMarkRunner.set_drop_old(not index_already_exists)
+        benchMarkRunner.run(tasks, taskLabel)
+    def stopHandler():
+        benchMarkRunner.stop_running()
+
     isRunning = benchMarkRunner.has_running()
-    runHandler = lambda: benchMarkRunner.run(tasks, taskLabel)
-    stopHandler = lambda: benchMarkRunner.stop_running()
 
     if isRunning:
         currentTaskId = benchMarkRunner.get_current_task_id()

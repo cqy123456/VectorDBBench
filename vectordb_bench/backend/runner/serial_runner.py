@@ -195,6 +195,8 @@ class SerialSearchRunner:
                 latencies.append(time.perf_counter() - s)
 
                 gt = ground_truth['neighbors_id'][idx]
+                if len(gt) > 0 and (not isinstance(gt[0], int)):
+                    gt = [int(item[0]) for item in gt]
                 recalls.append(calc_recall(self.k, gt[:self.k], results))
 
 

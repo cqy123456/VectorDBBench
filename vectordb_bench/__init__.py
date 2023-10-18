@@ -13,6 +13,9 @@ class config:
     DEFAULT_DATASET_URL = env.str("DEFAULT_DATASET_URL", "assets.zilliz.com/benchmark/")
     DATASET_LOCAL_DIR = env.path("DATASET_LOCAL_DIR", "/tmp/vectordb_bench/dataset")
     NUM_PER_BATCH = env.int("NUM_PER_BATCH", 5000)
+    
+    # example: mount -t nfs 172.168.70.248:/zilliz/milvus /home/nas
+    NAS_ADDRESS = env.path("NAS_ADDRESS", "/home/nas/milvus/hybrid_search")
 
     DROP_OLD = env.bool("DROP_OLD", True)
     USE_SHUFFLED_DATA = env.bool("USE_SHUFFLED_DATA", True)

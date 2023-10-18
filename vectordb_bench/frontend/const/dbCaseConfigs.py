@@ -34,6 +34,10 @@ CASE_LIST_WITH_DIVIDER = [
     DIVIDER,
     CaseType.CapacityDim960,
     CaseType.CapacityDim128,
+    DIVIDER,
+    CaseType.PerformanceGlove200,
+    CaseType.PerformanceLastFM,
+    CaseType.PerformanceGIST768,
 ]
 
 CASE_LIST = [item for item in CASE_LIST_WITH_DIVIDER if isinstance(item, CaseType)]
@@ -268,7 +272,10 @@ CASE_CONFIG_MAP = {
         CaseType.Performance1536D5M1P: MilvusPerformanceConfig,
         CaseType.Performance1536D500K1P: MilvusPerformanceConfig,
         CaseType.Performance1536D5M99P: MilvusPerformanceConfig,
-        CaseType.Performance1536D500K99P: MilvusPerformanceConfig,        
+        CaseType.Performance1536D500K99P: MilvusPerformanceConfig,
+        CaseType.PerformanceGlove200: MilvusPerformanceConfig,      
+        CaseType.PerformanceLastFM: MilvusPerformanceConfig,      
+        CaseType.PerformanceGIST768: MilvusPerformanceConfig,      
     },
     DB.WeaviateCloud: {
         CaseType.CapacityDim960: WeaviateLoadConfig,

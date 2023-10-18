@@ -24,19 +24,15 @@ from . import utils
 log = logging.getLogger(__name__)
 
 
-class BaseDataset(BaseModel):
+class BaseDatasetWithDefaultSize(BaseModel):
     name: str
     size: int
     dim: int
     metric_type: MetricType
     use_shuffled: bool
     _size_label: dict = PrivateAttr()
-
-    @validator("size")
-    def verify_size(cls, v):
-        if v not in cls._size_label:
-            raise ValueError(f"Size {v} not supported for the dataset, expected: {cls._size_label.keys()}")
-        return v
+    check_s3: bool = True
+    default_dir: str | None = None
 
     @property
     def label(self) -> str:
@@ -45,6 +41,13 @@ class BaseDataset(BaseModel):
     @property
     def dir_name(self) -> str:
         return f"{self.name}_{self.label}_{utils.numerize(self.size)}".lower()
+    
+class BaseDataset(BaseDatasetWithDefaultSize):
+    @validator("size")
+    def verify_size(cls, v):
+        if v not in cls._size_label:
+            raise ValueError(f"Size {v} not supported for the dataset, expected: {cls._size_label.keys()}")
+        return v
 
 
 class LAION(BaseDataset):
@@ -54,6 +57,59 @@ class LAION(BaseDataset):
     use_shuffled: bool = False
     _size_label: dict = {100_000_000: "LARGE"}
 
+class GLOVE_200(BaseDatasetWithDefaultSize):
+    name: str = "GLOVE_200"
+    dim: int = 200
+    metric_type: MetricType = MetricType.COSINE
+    use_shuffled: bool = config.USE_SHUFFLED_DATA
+    size: int = 1_183_514
+    _size_label: dict = {}
+    check_s3: bool = False
+    default_dir: str = config.NAS_ADDRESS
+    
+    @property
+    def label(self) -> str:
+        return self.name
+
+    @property
+    def dir_name(self) -> str:
+        return f"{self.name}"
+    
+class LASTFM(BaseDatasetWithDefaultSize):
+    name: str = "LAST_FM"
+    dim: int = 65
+    metric_type: MetricType = MetricType.COSINE
+    use_shuffled: bool = config.USE_SHUFFLED_DATA
+    size: int = 292_385
+    _size_label: dict = {}
+    check_s3: bool = False
+    default_dir: str = config.NAS_ADDRESS
+    
+    @property
+    def label(self) -> str:
+        return self.name
+
+    @property
+    def dir_name(self) -> str:
+        return f"{self.name}"
+
+class GIST_768(BaseDatasetWithDefaultSize):
+    name: str = "GIST_768"
+    dim: int = 768
+    metric_type: MetricType = MetricType.L2
+    use_shuffled: bool = config.USE_SHUFFLED_DATA
+    size: int = 1_000_000
+    _size_label: dict = {}
+    check_s3: bool = False
+    default_dir: str = config.NAS_ADDRESS
+    
+    @property
+    def label(self) -> str:
+        return self.name
+
+    @property
+    def dir_name(self) -> str:
+        return f"{self.name}"
 
 class GIST(BaseDataset):
     name: str = "GIST"
@@ -119,7 +175,7 @@ class DatasetManager(BaseModel):
         >>> for data in cohere:
         >>>    print(data.columns)
     """
-    data:   BaseDataset
+    data:   BaseDatasetWithDefaultSize
     test_data: pd.DataFrame | None = None
     train_files : list[str] = []
 
@@ -137,6 +193,9 @@ class DatasetManager(BaseModel):
             >>> sift_s.relative_path
             '/tmp/vectordb_bench/dataset/sift/sift_small_500k/'
         """
+        if self.data.default_dir is not None:
+            return pathlib.Path(self.data.default_dir, self.data.dir_name)
+        
         return pathlib.Path(config.DATASET_LOCAL_DIR, self.data.name.lower(), self.data.dir_name.lower())
 
     @property
@@ -249,7 +308,7 @@ class DatasetManager(BaseModel):
              - neighbors_head_1p.parquet: ground_truth of the test.parquet after filtering 1% data
              - neighbors_99p.parquet: ground_truth of the test.parquet after filtering 99% data
         """
-        if check:
+        if check and self.data.check_s3:
             self._validate_local_file()
 
         prefix = "shuffle_train" if self.data.use_shuffled else "train"
@@ -331,9 +390,12 @@ class Dataset(Enum):
     GLOVE = Glove
     SIFT = SIFT
     OPENAI = OpenAI
+    GLOVE_200 = GLOVE_200
+    LASTFM = LASTFM
+    GIST_768 = GIST_768
 
-    def get(self, size: int) -> BaseDataset:
-        return self.value(size=size)
+    def get(self, size: int | None = None) -> BaseDatasetWithDefaultSize:
+        return self.value(size=size) if size is not None else self.value()
 
-    def manager(self, size: int) -> DatasetManager:
+    def manager(self, size: int | None = None) -> DatasetManager:
         return DatasetManager(data=self.get(size))

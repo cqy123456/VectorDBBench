@@ -33,6 +33,9 @@ class CaseType(Enum):
     Performance768D1M1P = 7
     Performance768D10M99P = 8
     Performance768D1M99P = 9
+    PerformanceGlove200 = "PerformanceGlove200"
+    PerformanceLastFM = "PerformanceLastFM"
+    PerformanceGIST768 = "PerformanceGIST768"
 
     Performance1536D500K = 10
     Performance1536D5M = 11
@@ -130,6 +133,29 @@ class CapacityDim128(CapacityCase):
     description: str = """This case tests the vector database's loading capacity by repeatedly inserting small-dimension vectors (SIFT 100K vectors, <b>128 dimensions</b>) until it is fully loaded.
 Number of inserted vectors will be reported."""
 
+class PerformanceGlove200(PerformanceCase):
+    case_id: CaseType = CaseType.PerformanceGlove200
+    dataset: DatasetManager = Dataset.GLOVE_200.manager()
+    name: str = "GloVe 200 (1M+, 200 Dim, Cosine)"
+    description: str = """Glove 200, dim=200, n=1,183,514"""
+    load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
+    optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
+    
+class PerformanceLastFM(PerformanceCase):
+    case_id: CaseType = CaseType.PerformanceLastFM
+    dataset: DatasetManager = Dataset.LASTFM.manager()
+    name: str = "Last.FM (~300K, 65 Dim, Cosine)"
+    description: str = """LASTFM, dim=65, n=292,385"""
+    load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
+    optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
+
+class PerformanceGIST768(PerformanceCase):
+    case_id: CaseType = CaseType.PerformanceGIST768
+    dataset: DatasetManager = Dataset.GIST_768.manager()
+    name: str = "GIST 768 (1M, 768 Dim, L2)"
+    description: str = """GIST, dim=768, n=1,000,000"""
+    load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
+    optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
 
 class Performance768D10M(PerformanceCase):
     case_id: CaseType = CaseType.Performance768D10M
@@ -290,5 +316,8 @@ type2case = {
 
     CaseType.Performance1536D500K99P: Performance1536D500K99P,
     CaseType.Performance1536D5M99P: Performance1536D5M99P,
-
+    
+    CaseType.PerformanceGlove200: PerformanceGlove200,
+    CaseType.PerformanceLastFM: PerformanceLastFM,
+    CaseType.PerformanceGIST768: PerformanceGIST768,
 }

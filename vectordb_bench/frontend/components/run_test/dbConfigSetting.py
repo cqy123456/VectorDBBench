@@ -4,10 +4,6 @@ from vectordb_bench.frontend.utils import inputIsPassword
 
 
 def dbConfigSettings(st, activedDbList):
-    st.markdown(
-        "<style> .streamlit-expanderHeader p {font-size: 20px; font-weight: 600;}</style>",
-        unsafe_allow_html=True,
-    )
     expander = st.expander("Configurations for the selected databases", True)
 
     dbConfigs = {}
@@ -43,15 +39,19 @@ def dbConfigSettingItem(st, activeDb):
     propertiesItems = list(properties.items())
     moveDBLabelToLast(propertiesItems)
     dbConfig = {}
-    for j, property in enumerate(propertiesItems):
-        column = columns[j % DB_CONFIG_SETTING_COLUMNS]
+    i = 0
+    for property in propertiesItems:
+        column = columns[i % DB_CONFIG_SETTING_COLUMNS]
         key, value = property
+        if key == "test_type":
+            continue
         dbConfig[key] = column.text_input(
             key,
             key="%s-%s" % (activeDb, key),
             value=value.get("default", ""),
             type="password" if inputIsPassword(key) else "default",
         )
+        i += 1
     return dbConfig
 
 

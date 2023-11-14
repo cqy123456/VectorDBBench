@@ -5,7 +5,12 @@ from enum import Enum, auto
 from vectordb_bench import config
 from vectordb_bench.base import BaseModel
 
-from .dataset import Dataset, DatasetManager
+from .dataset import (
+    Dataset,
+    DatasetManager,
+    ScalarDatasetLabel,
+    category_num_to_column_name,
+)
 
 
 log = logging.getLogger(__name__)
@@ -46,23 +51,26 @@ class CaseType(Enum):
     Performance1536D5M99P = 15
 
     Custom = 100
+    CustomIntFilter = "CustomIntFilter"
+    CustomCategoryFilter = "CustomCategoryFilter"
+    CustomAndFilter = "CustomAndFilter"
+    CustomOrFilter = "CustomOrFilter"
 
-    @property
     def case_cls(self, custom_configs: dict | None = None) -> Case:
-        return type2case.get(self)
+        return type2case.get(self)(
+            **(custom_configs if custom_configs is not None else {})
+        )
 
-    @property
-    def case_name(self) -> str:
-        c = self.case_cls
+    def case_name(self, custom_configs: dict | None = None) -> str:
+        c = self.case_cls(custom_configs)
         if c is not None:
-            return c().name
+            return c.name
         raise ValueError("Case unsupported")
 
-    @property
-    def case_description(self) -> str:
-        c = self.case_cls
+    def case_description(self, custom_configs: dict | None = None) -> str:
+        c = self.case_cls(custom_configs)
         if c is not None:
-            return c().description
+            return c.description
         raise ValueError("Case unsupported")
 
 
@@ -84,14 +92,15 @@ class Case(BaseModel):
 
     case_id: CaseType
     label: CaseLabel
-    name: str
-    description: str
+    name: str = ""
+    description: str = ""
     dataset: DatasetManager
 
     load_timeout: float | int
     optimize_timeout: float | int | None
 
     filter_rate: float | None
+    with_category_column: bool = False
 
     @property
     def filters(self) -> dict | None:
@@ -103,6 +112,18 @@ class Case(BaseModel):
             }
 
         return None
+
+    def get_ground_truth_file(self) -> str:
+        filter_rate = self.filter_rate
+        if filter_rate is None or filter == 0.0:
+            file_name = "neighbors.parquet"
+        elif filter_rate == 0.01:
+            file_name = "neighbors_head_1p.parquet"
+        elif filter_rate == 0.99:
+            file_name = "neighbors_tail_1p.parquet"
+        else:
+            raise ValueError(f"Filters not supported: {filter_rate}")
+        return file_name
 
 
 class CapacityCase(Case, BaseModel):
@@ -117,6 +138,7 @@ class PerformanceCase(Case, BaseModel):
     filter_rate: float | None = None
     load_timeout: float | int = config.LOAD_TIMEOUT_DEFAULT
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_DEFAULT
+
 
 class CapacityDim960(CapacityCase):
     case_id: CaseType = CaseType.CapacityDim960
@@ -133,6 +155,7 @@ class CapacityDim128(CapacityCase):
     description: str = """This case tests the vector database's loading capacity by repeatedly inserting small-dimension vectors (SIFT 100K vectors, <b>128 dimensions</b>) until it is fully loaded.
 Number of inserted vectors will be reported."""
 
+
 class PerformanceGlove200(PerformanceCase):
     case_id: CaseType = CaseType.PerformanceGlove200
     dataset: DatasetManager = Dataset.GLOVE_200.manager()
@@ -140,7 +163,8 @@ class PerformanceGlove200(PerformanceCase):
     description: str = """Glove 200, dim=200, n=1,183,514"""
     load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
-    
+
+
 class PerformanceLastFM(PerformanceCase):
     case_id: CaseType = CaseType.PerformanceLastFM
     dataset: DatasetManager = Dataset.LASTFM.manager()
@@ -149,6 +173,7 @@ class PerformanceLastFM(PerformanceCase):
     load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
 
+
 class PerformanceGIST768(PerformanceCase):
     case_id: CaseType = CaseType.PerformanceGIST768
     dataset: DatasetManager = Dataset.GIST_768.manager()
@@ -156,6 +181,7 @@ class PerformanceGIST768(PerformanceCase):
     description: str = """GIST, dim=768, n=1,000,000"""
     load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
+
 
 class Performance768D10M(PerformanceCase):
     case_id: CaseType = CaseType.Performance768D10M
@@ -264,6 +290,7 @@ Results will show index building time, recall, and maximum QPS."""
     load_timeout: float | int = config.LOAD_TIMEOUT_1536D_500K
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_1536D_500K
 
+
 class Performance1536D5M1P(PerformanceCase):
     case_id: CaseType = CaseType.Performance1536D5M1P
     filter_rate: float | int | None = 0.01
@@ -274,6 +301,7 @@ Results will show index building time, recall, and maximum QPS."""
     load_timeout: float | int = config.LOAD_TIMEOUT_1536D_5M
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_1536D_5M
 
+
 class Performance1536D500K99P(PerformanceCase):
     case_id: CaseType = CaseType.Performance1536D500K99P
     filter_rate: float | int | None = 0.99
@@ -283,6 +311,7 @@ class Performance1536D500K99P(PerformanceCase):
 Results will show index building time, recall, and maximum QPS."""
     load_timeout: float | int = config.LOAD_TIMEOUT_1536D_500K
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_1536D_500K
+
 
 class Performance1536D5M99P(PerformanceCase):
     case_id: CaseType = CaseType.Performance1536D5M99P
@@ -295,29 +324,188 @@ Results will show index building time, recall, and maximum QPS."""
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_1536D_5M
 
 
+class CustomFilter(PerformanceCase):
+    dataset_label: ScalarDatasetLabel
+    with_category_column: bool = True
+
+
+class CustomIntFilter(CustomFilter):
+    case_id: CaseType = CaseType.CustomIntFilter
+    filter_rate: float | None = None
+
+    def __init__(
+        self,
+        dataset_label: ScalarDatasetLabel | str,
+        filter_rate: float | None,
+        **kwargs,
+    ):
+        dataset = ScalarDatasetLabel(dataset_label).get_dataset()
+        name = (
+            f"int-{int(filter_rate * 100)}p" if filter_rate is not None else f"{filter_rate}"
+        )
+        description = f"{dataset.data.name} - {name}"
+        super().__init__(
+            dataset_label=dataset_label,
+            dataset=dataset,
+            filter_rate=filter_rate,
+            name=name,
+            description=description,
+            **kwargs,
+        )
+
+    def get_ground_truth_file(self) -> str:
+        filter_rate = self.filter_rate
+        return (
+            f"neighbors_id_filter_{int(filter_rate * 100)}p.parquet"
+            if filter_rate is not None and filter_rate > 0
+            else "neighbors.parquet"
+        )
+
+
+def category_num_to_category_column_idx(
+    dataset: DatasetManager, category_num: int
+) -> int:
+    return dataset.data.category_nums.index(category_num)
+
+
+class CustomCategoryFilter(CustomFilter):
+    case_id: CaseType = CaseType.CustomCategoryFilter
+    filter_rate: float
+    category_num: int
+    category_column_idx: int
+
+    def __init__(
+        self, dataset_label: ScalarDatasetLabel | str, category_num: int, **kwargs
+    ):
+        filter_rate = 1.0 - 1.0 / category_num
+        dataset = ScalarDatasetLabel(dataset_label).get_dataset()
+        category_column_idx = category_num_to_category_column_idx(dataset, category_num)
+        name = f"{category_num_to_column_name(category_num)}"
+        description = f"{dataset.data.name} - {name}"
+        super().__init__(
+            dataset_label=dataset_label,
+            dataset=dataset,
+            filter_rate=filter_rate,
+            category_num=category_num,
+            category_column_idx=category_column_idx,
+            name=name,
+            description=description,
+            **kwargs,
+        )
+
+    def get_ground_truth_file(self) -> str:
+        return f"neighbors_{self.name.replace('-', '_')}_filter.parquet"
+
+
+class CustomAndFilter(CustomFilter):
+    case_id: CaseType = CaseType.CustomAndFilter
+    filter_rate: float
+    category_nums: list[int]
+    category_column_idxes: list[int]
+
+    def __init__(
+        self,
+        dataset_label: ScalarDatasetLabel | str,
+        category_nums: list[int],
+        **kwargs,
+    ):
+        r = 1
+        for category_num in category_nums:
+            r *= category_num
+        filter_rate = 1.0 - 1.0 / r
+        dataset = ScalarDatasetLabel(dataset_label).get_dataset()
+        category_column_idxes = [
+            category_num_to_category_column_idx(dataset, category_num)
+            for category_num in category_nums
+        ]
+        category_nums.sort()
+        name = f"{len(category_nums)}_and_{'_'.join([f'{category_num}' for category_num in category_nums])}"
+        description = f"{dataset.data.name} - {name}"
+        super().__init__(
+            dataset_label=dataset_label,
+            dataset=dataset,
+            filter_rate=filter_rate,
+            category_nums=category_nums,
+            category_column_idxes=category_column_idxes,
+            name=name,
+            description=description,
+            **kwargs,
+        )
+
+    def get_ground_truth_file(self) -> str:
+        category_nums = self.category_nums
+        if len(category_nums) == 1:
+            file_name = f"neighbors_{category_num_to_column_name(category_nums[0]).replace('-', '_')}_filter.parquet"
+        else:
+            file_name = f"neighbors_{self.name}.parquet"
+        return file_name
+
+
+class CustomOrFilter(CustomFilter):
+    case_id: CaseType = CaseType.CustomOrFilter
+    filter_rate: float
+    category_nums: list[int]
+    category_column_idxes: list[int]
+
+    def __init__(
+        self,
+        dataset_label: ScalarDatasetLabel | str,
+        category_nums: list[int],
+        **kwargs,
+    ):
+        r = 0.0
+        for category_num in category_nums:
+            r += 1.0 / category_num
+        filter_rate = 1.0 - r
+        dataset = ScalarDatasetLabel(dataset_label).get_dataset()
+        category_column_idxes = [
+            category_num_to_category_column_idx(dataset, category_num)
+            for category_num in category_nums
+        ]
+        name = f"{len(category_nums)}_or_{'_'.join([f'{category_num}' for category_num in category_nums])}"
+        description = f"{dataset.data.name} - {name}"
+        super().__init__(
+            dataset_label=dataset_label,
+            dataset=dataset,
+            filter_rate=filter_rate,
+            category_nums=category_nums,
+            category_column_idxes=category_column_idxes,
+            name=name,
+            description=description,
+            **kwargs,
+        )
+
+    def get_ground_truth_file(self) -> str:
+        category_nums = self.category_nums
+        if len(category_nums) == 1:
+            file_name = f"neighbors_{category_num_to_column_name(category_nums[0]).replace('-', '_')}_filter.parquet"
+        else:
+            category_nums.sort()
+            file_name = f"neighbors_{self.name}.parquet"
+        return file_name
+
+
 type2case = {
     CaseType.CapacityDim960: CapacityDim960,
     CaseType.CapacityDim128: CapacityDim128,
-
     CaseType.Performance768D100M: Performance768D100M,
     CaseType.Performance768D10M: Performance768D10M,
     CaseType.Performance768D1M: Performance768D1M,
-
     CaseType.Performance768D10M1P: Performance768D10M1P,
     CaseType.Performance768D1M1P: Performance768D1M1P,
     CaseType.Performance768D10M99P: Performance768D10M99P,
     CaseType.Performance768D1M99P: Performance768D1M99P,
-
     CaseType.Performance1536D500K: Performance1536D500K,
     CaseType.Performance1536D5M: Performance1536D5M,
-
     CaseType.Performance1536D500K1P: Performance1536D500K1P,
     CaseType.Performance1536D5M1P: Performance1536D5M1P,
-
     CaseType.Performance1536D500K99P: Performance1536D500K99P,
     CaseType.Performance1536D5M99P: Performance1536D5M99P,
-    
     CaseType.PerformanceGlove200: PerformanceGlove200,
     CaseType.PerformanceLastFM: PerformanceLastFM,
     CaseType.PerformanceGIST768: PerformanceGIST768,
+    CaseType.CustomIntFilter: CustomIntFilter,
+    CaseType.CustomCategoryFilter: CustomCategoryFilter,
+    CaseType.CustomAndFilter: CustomAndFilter,
+    CaseType.CustomOrFilter: CustomOrFilter,
 }

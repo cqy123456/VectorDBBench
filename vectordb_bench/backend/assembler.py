@@ -1,3 +1,4 @@
+from vectordb_bench.backend.clients.api import TestType
 from .cases import CaseLabel
 from .task_runner import CaseRunner, RunningStatus, TaskRunner
 from ..models import TaskConfig
@@ -10,26 +11,37 @@ log = logging.getLogger(__name__)
 
 class Assembler:
     @classmethod
-    def assemble(cls, run_id , task: TaskConfig) -> CaseRunner:
+    def assemble(cls, run_id, task: TaskConfig) -> CaseRunner:
         c_cls = task.case_config.case_id.case_cls
 
-        c = c_cls()
+        c = c_cls(task.case_config.custom_case)
         if type(task.db_case_config) != EmptyDBCaseConfig:
             task.db_case_config.metric_type = c.dataset.data.metric_type
 
-        runner = CaseRunner(
-            run_id=run_id,
-            config=task,
-            ca=c,
-            status=RunningStatus.PENDING,
-        )
+        if task.db_config.test_type == TestType.LIBRARY and c.dataset.data.use_shuffled:
+            log.warning(f"Should not use shuffle data for library tests. Force set use_shuffled to False")
+            c.dataset.data.use_shuffled = False
 
-        return runner
+        groundtruth_file = c.get_ground_truth_file()
+        if c.dataset.check_case_has_groundtruth(groundtruth_file):
+            runner = CaseRunner(
+                run_id=run_id,
+                config=task,
+                ca=c,
+                status=RunningStatus.PENDING,
+            )
+            return runner
+        else:
+            log.info(f"Skip Case - No groundtruth file {groundtruth_file}")
+            return None
 
     @classmethod
-    def assemble_all(cls, run_id: str, task_label: str, tasks: list[TaskConfig]) -> TaskRunner:
+    def assemble_all(
+        cls, run_id: str, task_label: str, tasks: list[TaskConfig]
+    ) -> TaskRunner:
         """group by case type, db, and case dataset"""
         runners = [cls.assemble(run_id, task) for task in tasks]
+        runners = [runner for runner in runners if runner is not None]
         load_runners = [r for r in runners if r.ca.label == CaseLabel.Load]
         perf_runners = [r for r in runners if r.ca.label == CaseLabel.Performance]
 
@@ -47,7 +59,7 @@ class Assembler:
 
         # sort by dataset size
         for k in db2runner.keys():
-            db2runner[k].sort(key=lambda x:x.ca.dataset.data.size)
+            db2runner[k].sort(key=lambda x: x.ca.dataset.data.size)
 
         all_runners = []
         all_runners.extend(load_runners)

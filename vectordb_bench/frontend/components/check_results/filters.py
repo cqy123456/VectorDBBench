@@ -1,7 +1,8 @@
 from vectordb_bench.backend.cases import Case
+from vectordb_bench.backend.clients.api import TestType
 from vectordb_bench.frontend.components.check_results.data import getChartData
 from vectordb_bench.frontend.components.check_results.expanderStyle import initSidebarExanderStyle
-from vectordb_bench.frontend.const.dbCaseConfigs import CASE_LIST
+from vectordb_bench.frontend.const.dbCaseConfigs import NonFilterCaseList
 from vectordb_bench.frontend.const.styles import *
 import streamlit as st
 
@@ -54,10 +55,10 @@ def getshownResults(results: list[TestResult], st) -> list[CaseResult]:
 
 def getShowDbsAndCases(result: list[CaseResult], st) -> tuple[list[str], list[Case]]:
     initSidebarExanderStyle(st)
-    allDbNames = list(set({res.task_config.db_name for res in result}))
+    allDbNames = list(set({res.task_config.db_name for res in result if res.task_config.db_config.test_type == TestType.DATABASE}))
     allDbNames.sort()
     allCasesSet = set({res.task_config.case_config.case_id for res in result})
-    allCases: list[Case] = [case.case_cls() for case in CASE_LIST if case in allCasesSet]
+    allCases: list[Case] = [case.case_cls() for case in NonFilterCaseList if case in allCasesSet]
 
     # DB Filter
     dbFilterContainer = st.container()

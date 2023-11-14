@@ -1,6 +1,8 @@
+from collections import defaultdict
 from vectordb_bench.frontend.const.styles import *
 from vectordb_bench.backend.cases import CaseType
 from vectordb_bench.frontend.const.dbCaseConfigs import *
+from vectordb_bench.models import CaseConfig
 
 
 def caseSelector(st, activedDbList):
@@ -14,28 +16,46 @@ def caseSelector(st, activedDbList):
         unsafe_allow_html=True,
     )
 
-    caseIsActived = {case: False for case in CASE_LIST}
-    allCaseConfigs = {db: {case: {} for case in CASE_LIST} for db in DB_LIST}
-    for caseOrDivider in CASE_LIST_WITH_DIVIDER:
-        if caseOrDivider == DIVIDER:
-            caseItemContainer.markdown(
-                "<div style='border: 1px solid #cccccc60; margin-bottom: 24px;'></div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            case = caseOrDivider
-            caseItemContainer = st.container()
-            caseIsActived[case] = caseItem(
-                caseItemContainer, allCaseConfigs, case, activedDbList
-            )
-    activedCaseList = [case for case in CASE_LIST if caseIsActived[case]]
+    allCaseConfigs = defaultdict(lambda: defaultdict(dict))
+    activedCaseList: list[CaseConfig] = []
+    for bunchCases in bunchCasesList:
+        activedCases = bunchCasesExpander(st, bunchCases, allCaseConfigs, activedDbList)
+        activedCaseList += activedCases
     return activedCaseList, allCaseConfigs
 
 
-def caseItem(st, allCaseConfigs, case: CaseType, activedDbList):
-    selected = st.checkbox(case.case_name)
+def bunchCasesExpander(
+    st, bunchCases: BunchCases, allCaseConfigs, activedDbList
+) -> list[CaseConfig]:
+    expander = st.expander(bunchCases.header, False)
+    activedCases: list[CaseConfig] = []
+    for caseOption in bunchCases.cases:
+        if caseOption == Delimiter.Line:
+            expander.markdown(
+                "<div style='border: 1px solid #cccccc60; margin-bottom: 24px;'></div>",
+                unsafe_allow_html=True,
+            )
+        elif isinstance(caseOption, BatchCasesOption):
+            if batchCaseItem(expander, caseOption):
+                activedCases += caseOption.cases
+        else:
+            if normalCaseItem(expander, allCaseConfigs, caseOption, activedDbList):
+                activedCases.append(CaseConfig(case_id=caseOption, custom_case={}))
+    return activedCases
+
+def batchCaseItem(st, bathCase: BatchCasesOption):
+    selected = st.checkbox(bathCase.label)
     st.markdown(
-        f"<div style='color: #1D2939; margin: -8px 0 20px {CHECKBOX_INDENT}px; font-size: 14px;'>{case.case_description}</div>",
+        f"<div style='color: #1D2939; margin: -8px 0 20px {CHECKBOX_INDENT}px; font-size: 14px;'>{bathCase.description}</div>",
+        unsafe_allow_html=True,
+    )
+
+    return selected
+
+def normalCaseItem(st, allCaseConfigs, case: CaseType, activedDbList):
+    selected = st.checkbox(case.case_name())
+    st.markdown(
+        f"<div style='color: #1D2939; margin: -8px 0 20px {CHECKBOX_INDENT}px; font-size: 14px;'>{case.case_description()}</div>",
         unsafe_allow_html=True,
     )
 

@@ -1,4 +1,6 @@
 from pydantic import BaseModel, SecretStr
+from vectordb_bench.backend.cases import CaseType
+from vectordb_bench.models import CaseConfig
 from ..api import DBConfig, DBCaseConfig, MetricType, IndexType
 
 
@@ -19,8 +21,8 @@ class MilvusIndexConfig(BaseModel):
         if not self.metric_type:
             return ""
 
-        if self.metric_type == MetricType.COSINE:
-            return MetricType.L2.value
+        # if self.metric_type == MetricType.COSINE:
+        #     return MetricType.L2.value
         return self.metric_type.value
 
 
@@ -39,11 +41,36 @@ class AutoIndexConfig(MilvusIndexConfig, DBCaseConfig):
             "metric_type": self.parse_metric(),
         }
 
+
+def get_col_ids_by_case(caseConfig: CaseConfig):
+    case = caseConfig.case_id.case_cls(caseConfig.custom_case)
+    filter_rate = case.filter_rate
+    if filter_rate is None or filter_rate == 0.0:
+        return [0]
+    elif case.case_id == CaseType.CustomIntFilter:
+        return [0, 6]
+    elif case.case_id == CaseType.CustomCategoryFilter:
+        return [0, case.category_column_idx + 1]
+    elif (
+        case.case_id == CaseType.CustomAndFilter
+        or case.case_id == CaseType.CustomOrFilter
+    ):
+        return [
+            0,
+            *[
+                category_column_idx + 1
+                for category_column_idx in case.category_column_idxes
+            ],
+        ]
+    return [0]
+
+
 class HNSWConfig(MilvusIndexConfig, DBCaseConfig):
-    M: int
-    efConstruction: int
-    ef: int | None = None
+    M: int = 30
+    efConstruction: int = 360
+    ef: int = 100
     index: IndexType = IndexType.HNSW
+    caseConfig: CaseConfig = CaseConfig(case_id=CaseType.Custom, custom_case={})
 
     def index_param(self) -> dict:
         return {
@@ -53,14 +80,21 @@ class HNSWConfig(MilvusIndexConfig, DBCaseConfig):
         }
 
     def search_param(self) -> dict:
+        efConstruction = 8
+        col_ids = get_col_ids_by_case(self.caseConfig)
+        for col_id in col_ids:
+            if col_id == 0:
+                efConstruction += 1
+            else:
+                efConstruction += 2 << (col_id - 1)
         return {
             "metric_type": self.parse_metric(),
-            "params": {"ef": self.ef},
+            "params": {"ef": self.ef, "efConstruction": efConstruction},
         }
 
 
 class DISKANNConfig(MilvusIndexConfig, DBCaseConfig):
-    search_list: int | None = None
+    search_list: int = 100
     index: IndexType = IndexType.DISKANN
 
     def index_param(self) -> dict:
@@ -112,6 +146,7 @@ class FLATConfig(MilvusIndexConfig, DBCaseConfig):
             "params": {},
         }
 
+
 _milvus_case_config = {
     IndexType.AUTOINDEX: AutoIndexConfig,
     IndexType.HNSW: HNSWConfig,
@@ -119,4 +154,3 @@ _milvus_case_config = {
     IndexType.IVFFlat: IVFFlatConfig,
     IndexType.Flat: FLATConfig,
 }
-

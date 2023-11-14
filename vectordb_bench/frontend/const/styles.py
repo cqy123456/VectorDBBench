@@ -35,6 +35,7 @@ HEADER_ICON = "https://assets.zilliz.com/vdb_benchmark_db790b5387.png"
 # RedisCloud icon: https://assets.zilliz.com/Redis_Cloud_74b8bfef39.png
 # Elasticsearch icon: https://assets.zilliz.com/elasticsearch_beffeadc29.png
 # Chroma icon: https://assets.zilliz.com/chroma_ceb3f06ed7.png
+# Cardinal icon: https://assets.zilliz.com/cardinal_73d3daa12c.png
 DB_TO_ICON = {
     DB.Milvus: "https://assets.zilliz.com/milvus_c30b0d1994.png",
     DB.ZillizCloud: "https://assets.zilliz.com/zilliz_5f4cc9b050.png",
@@ -44,7 +45,9 @@ DB_TO_ICON = {
     DB.WeaviateCloud: "https://assets.zilliz.com/weaviate_4f6f171ebe.png",
     DB.PgVector: "https://assets.zilliz.com/PG_Vector_d464f2ef5f.png",
     DB.Redis: "https://assets.zilliz.com/Redis_Cloud_74b8bfef39.png",
-    DB.Chroma: "https://assets.zilliz.com/chroma_ceb3f06ed7.png", 
+    DB.Chroma: "https://assets.zilliz.com/chroma_ceb3f06ed7.png",
+    DB.Knowhere: "https://assets.zilliz.com/knowhere_df211f104c.png",
+    DB.KnowhereCloud: "https://assets.zilliz.com/knowhere_cloud_7aaa23cf67.png",
 }
 
 # RedisCloud color: #0D6EFD
@@ -58,4 +61,6 @@ COLOR_MAP = {
     DB.WeaviateCloud.value: "#20C997",
     DB.PgVector.value: "#4C779A",
     DB.Redis.value: "#0D6EFD",
+    DB.Knowhere.value: "#333333",
+    DB.KnowhereCloud.value: "#005951",
 }

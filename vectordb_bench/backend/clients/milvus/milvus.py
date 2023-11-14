@@ -7,14 +7,15 @@ from typing import Iterable, Type
 
 from pymilvus import Collection, utility
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusException
-
+from vectordb_bench.backend.cases import Case, CaseType
 from ..api import VectorDB, DBCaseConfig, DBConfig, IndexType
 from .config import MilvusConfig, _milvus_case_config
 
 
 log = logging.getLogger(__name__)
 
-MILVUS_LOAD_REQS_SIZE = 1.5 * 1024 *1024
+MILVUS_LOAD_REQS_SIZE = 1.5 * 1024 * 1024
+
 
 class Milvus(VectorDB):
     def __init__(
@@ -25,6 +26,9 @@ class Milvus(VectorDB):
         collection_name: str = "VectorDBBenchCollection",
         drop_old: bool = False,
         name: str = "Milvus",
+        with_category_column: bool = False,
+        category_column_names: list[str] = [],
+        int_column_names: list[str] = ["id"],
         **kwargs,
     ):
         """Initialize wrapper around the milvus vector database."""
@@ -32,14 +36,24 @@ class Milvus(VectorDB):
         self.db_config = db_config
         self.case_config = db_case_config
         self.collection_name = collection_name
-        self.batch_size = int(MILVUS_LOAD_REQS_SIZE / (dim *4))
+        self.batch_size = int(MILVUS_LOAD_REQS_SIZE / (dim * 4))
 
         self._primary_field = "pk"
-        self._scalar_field = "id"
+        self._scalar_int_fields = int_column_names
+        self._scalar_category_fields = (
+            [
+                category_column_name.replace("-", "_")
+                for category_column_name in category_column_names
+            ]
+            if with_category_column
+            else []
+        )
+        self.category_column_names = category_column_names
         self._vector_field = "vector"
         self._index_name = "vector_idx"
 
         from pymilvus import connections
+
         connections.connect(**self.db_config, timeout=30)
         if drop_old and utility.has_collection(self.collection_name):
             log.info(f"{self.name} client drop_old collection: {self.collection_name}")
@@ -48,8 +62,15 @@ class Milvus(VectorDB):
         if not utility.has_collection(self.collection_name):
             fields = [
                 FieldSchema(self._primary_field, DataType.INT64, is_primary=True),
-                FieldSchema(self._scalar_field, DataType.INT64),
-                FieldSchema(self._vector_field, DataType.FLOAT_VECTOR, dim=dim)
+                *[
+                    FieldSchema(int_field, DataType.INT64)
+                    for int_field in self._scalar_int_fields
+                ],
+                FieldSchema(self._vector_field, DataType.FLOAT_VECTOR, dim=dim),
+                *[
+                    FieldSchema(category_field, DataType.VARCHAR, max_length=10)
+                    for category_field in self._scalar_category_fields
+                ],
             ]
 
             log.info(f"{self.name} create collection: {self.collection_name}")
@@ -79,6 +100,7 @@ class Milvus(VectorDB):
             >>>     self.search_embedding()
         """
         from pymilvus import connections
+
         self.col: Collection | None = None
 
         connections.connect(**self.db_config, timeout=60)
@@ -123,6 +145,7 @@ class Milvus(VectorDB):
             )
 
             utility.wait_for_index_building_complete(self.collection_name)
+
             def wait_index():
                 while True:
                     progress = utility.index_building_progress(self.collection_name)
@@ -150,12 +173,13 @@ class Milvus(VectorDB):
 
     def need_normalize_cosine(self) -> bool:
         """Wheather this database need to normalize dataset to support COSINE"""
-        return True
+        return False
 
     def insert_embeddings(
         self,
         embeddings: Iterable[list[float]],
         metadata: list[int],
+        extra_category_metadata: dict,
         **kwargs,
     ) -> (int, Exception):
         """Insert embeddings into Milvus. should call self.init() first"""
@@ -165,11 +189,19 @@ class Milvus(VectorDB):
         insert_count = 0
         try:
             for batch_start_offset in range(0, len(embeddings), self.batch_size):
-                batch_end_offset = min(batch_start_offset + self.batch_size, len(embeddings))
+                batch_end_offset = min(
+                    batch_start_offset + self.batch_size, len(embeddings)
+                )
                 insert_data = [
-                        metadata[batch_start_offset : batch_end_offset],
-                        metadata[batch_start_offset : batch_end_offset],
-                        embeddings[batch_start_offset : batch_end_offset],
+                    metadata[batch_start_offset:batch_end_offset],
+                    metadata[batch_start_offset:batch_end_offset],
+                    embeddings[batch_start_offset:batch_end_offset],
+                    *[
+                        extra_category_metadata[category_column_name][
+                            batch_start_offset:batch_end_offset
+                        ]
+                        for category_column_name in self.category_column_names
+                    ],
                 ]
                 res = self.col.insert(insert_data)
                 insert_count += len(res.primary_keys)
@@ -180,17 +212,44 @@ class Milvus(VectorDB):
             return (insert_count, e)
         return (insert_count, None)
 
+    def get_filters(self, case: Case) -> str:
+        if case.case_id == CaseType.CustomIntFilter:
+            if case.filter_rate is not None:
+                return f"{self._scalar_int_fields[0]} >= {round(case.filter_rate * case.dataset.data.size)}"
+            else:
+                return ""
+        if case.case_id == CaseType.CustomCategoryFilter:
+            return f'{self._scalar_category_fields[case.category_column_idx]} == "1"'
+        if case.case_id == CaseType.CustomAndFilter:
+            return " and ".join(
+                [
+                    f'{self._scalar_category_fields[category_column_idx]} == "1"'
+                    for category_column_idx in case.category_column_idxes
+                ]
+            )
+        if case.case_id == CaseType.CustomOrFilter:
+            return " or ".join(
+                [
+                    f'{self._scalar_category_fields[category_column_idx]} == "1"'
+                    for category_column_idx in case.category_column_idxes
+                ]
+            )
+        else:
+            # Compatible with previous filter case (1p, 99p)
+            if case.filter_rate is not None:
+                return f"{self._scalar_int_fields[0]} >= {round(case.filter_rate * case.dataset.data.size)}"
+            else:
+                return ""
+
     def search_embedding(
         self,
         query: list[float],
         k: int = 100,
-        filters: dict | None = None,
+        filters: str | None = None,
         timeout: int | None = None,
     ) -> list[int]:
         """Perform a search on a query embedding and return results."""
         assert self.col is not None
-
-        expr = f"{self._scalar_field} {filters.get('metadata')}" if filters else ""
 
         # Perform the search.
         res = self.col.search(
@@ -198,7 +257,7 @@ class Milvus(VectorDB):
             anns_field=self._vector_field,
             param=self.case_config.search_param(),
             limit=k,
-            expr=expr,
+            expr=filters,
         )
 
         # Organize results.

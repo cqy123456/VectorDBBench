@@ -1,46 +1,100 @@
-from enum import IntEnum
+from enum import Enum, IntEnum
 import typing
 from pydantic import BaseModel
 from vectordb_bench.backend.cases import CaseType
 from vectordb_bench.backend.clients import DB
 from vectordb_bench.backend.clients.api import IndexType
-
+from vectordb_bench.backend.dataset import ScalarDatasetLabel
+from vectordb_bench.frontend.const.batchCases import (
+    BatchCasesOption,
+    get_all_and_filter_cases,
+    get_all_category_filter_cases,
+    get_all_int_filter_cases,
+    get_all_or_filter_cases,
+)
+from typing import TypeAlias
 from vectordb_bench.models import CaseConfigParamType
 
 MAX_STREAMLIT_INT = (1 << 53) - 1
 
 DB_LIST = [d for d in DB]
 
-DIVIDER = "DIVIDER"
-CASE_LIST_WITH_DIVIDER = [
+
+class Delimiter(Enum):
+    Line = "line"
+
+
+CaseOption: TypeAlias = CaseType | Delimiter | BatchCasesOption
+
+
+class BunchCases(BaseModel):
+    header: str
+    cases: list[CaseOption] = []
+
+
+bunchCasesList: list[BunchCases] = [
+    BunchCases(
+        header="Search Cases",
+        cases=[
+            CaseType.Performance768D100M,
+            CaseType.Performance768D10M,
+            CaseType.Performance768D1M,
+            Delimiter.Line,
+            CaseType.Performance1536D5M,
+            CaseType.Performance1536D500K,
+            Delimiter.Line,
+            CaseType.PerformanceGlove200,
+            CaseType.PerformanceLastFM,
+            CaseType.PerformanceGIST768,
+        ],
+    ),
+    BunchCases(
+        header="Int-Filter Cases",
+        cases=[
+            get_all_int_filter_cases(dataset_label)
+            for dataset_label in ScalarDatasetLabel
+        ],
+    ),
+    BunchCases(
+        header="Category-Filter Cases",
+        cases=[
+            get_all_category_filter_cases(dataset_label)
+            for dataset_label in ScalarDatasetLabel
+        ],
+    ),
+    BunchCases(
+        header="And-Filter Cases",
+        cases=[
+            get_all_and_filter_cases(dataset_label)
+            for dataset_label in ScalarDatasetLabel
+        ],
+    ),
+    BunchCases(
+        header="Or-Filter Cases",
+        cases=[
+            get_all_or_filter_cases(dataset_label)
+            for dataset_label in ScalarDatasetLabel
+        ],
+    ),
+    BunchCases(
+        header="Capacity Cases",
+        cases=[
+            CaseType.CapacityDim960,
+            CaseType.CapacityDim128,
+        ],
+    ),
+]
+
+NonFilterCaseList: list[CaseType] = [
     CaseType.Performance768D100M,
     CaseType.Performance768D10M,
     CaseType.Performance768D1M,
-    DIVIDER,
     CaseType.Performance1536D5M,
     CaseType.Performance1536D500K,
-    DIVIDER,
-    CaseType.Performance768D10M1P,
-    CaseType.Performance768D1M1P,
-    DIVIDER,
-    CaseType.Performance1536D5M1P,
-    CaseType.Performance1536D500K1P,    
-    DIVIDER,
-    CaseType.Performance768D10M99P,
-    CaseType.Performance768D1M99P,
-    DIVIDER,
-    CaseType.Performance1536D5M99P,
-    CaseType.Performance1536D500K99P,
-    DIVIDER,
-    CaseType.CapacityDim960,
-    CaseType.CapacityDim128,
-    DIVIDER,
     CaseType.PerformanceGlove200,
     CaseType.PerformanceLastFM,
     CaseType.PerformanceGIST768,
 ]
-
-CASE_LIST = [item for item in CASE_LIST_WITH_DIVIDER if isinstance(item, CaseType)]
 
 
 class InputType(IntEnum):
@@ -273,9 +327,9 @@ CASE_CONFIG_MAP = {
         CaseType.Performance1536D500K1P: MilvusPerformanceConfig,
         CaseType.Performance1536D5M99P: MilvusPerformanceConfig,
         CaseType.Performance1536D500K99P: MilvusPerformanceConfig,
-        CaseType.PerformanceGlove200: MilvusPerformanceConfig,      
-        CaseType.PerformanceLastFM: MilvusPerformanceConfig,      
-        CaseType.PerformanceGIST768: MilvusPerformanceConfig,      
+        CaseType.PerformanceGlove200: MilvusPerformanceConfig,
+        CaseType.PerformanceLastFM: MilvusPerformanceConfig,
+        CaseType.PerformanceGIST768: MilvusPerformanceConfig,
     },
     DB.WeaviateCloud: {
         CaseType.CapacityDim960: WeaviateLoadConfig,

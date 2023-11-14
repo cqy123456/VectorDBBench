@@ -4,7 +4,7 @@ from vectordb_bench.frontend.components.run_test.caseSelector import caseSelecto
 from vectordb_bench.frontend.components.run_test.dbConfigSetting import dbConfigSettings
 from vectordb_bench.frontend.components.run_test.dbSelector import dbSelector
 from vectordb_bench.frontend.components.run_test.generateTasks import generate_tasks
-from vectordb_bench.frontend.components.run_test.hideSidebar import hideSidebar
+from vectordb_bench.frontend.components.run_test.hideSidebar import hideSidebar, wideContent
 from vectordb_bench.frontend.components.run_test.submitTask import submitTask
 from vectordb_bench.frontend.components.check_results.nav import NavToResults
 from vectordb_bench.frontend.components.check_results.headerIcon import drawHeaderIcon
@@ -19,11 +19,18 @@ def main():
     drawHeaderIcon(st)
 
     # hide sidebar
-    hideSidebar(st)
+    # hideSidebar(st)
+    wideContent(st)
 
     # nav to results
     NavToResults(st)
 
+    # some page styles
+    st.markdown(
+        "<style> .streamlit-expanderHeader p {font-size: 20px; font-weight: 600;}</style>",
+        unsafe_allow_html=True,
+    )
+    
     # header
     st.title("Run Your Test")
     # st.write("description [todo]")

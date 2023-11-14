@@ -21,6 +21,16 @@ class IndexType(str, Enum):
     ES_HNSW = "hnsw"
 
 
+class TestType(str, Enum):
+    """
+    - Database: Concurrent Test for QPS, with single-nq (nq=1).
+    - Library: Serial Test for QPS, with large-nq (nq>=10,000).
+    """
+
+    DATABASE = "DATABASE"
+    LIBRARY = "LIBRARY"
+
+
 class DBConfig(ABC, BaseModel):
     """DBConfig contains the connection info of vector database
 
@@ -30,9 +40,12 @@ class DBConfig(ABC, BaseModel):
             MilvusConfig.db_label = 2c8g
             MilvusConfig.db_label = 16c64g
             ZillizCloudConfig.db_label = 1cu-perf
+
+        test_type(TestType | str): DATABASE (default) or LIBRARY
     """
 
     db_label: str = ""
+    test_type: TestType = TestType.DATABASE
 
     @abstractmethod
     def to_dict(self) -> dict:
@@ -46,9 +59,14 @@ class DBConfig(ABC, BaseModel):
             raise ValueError("Empty string!")
         return v
 
+    @property
+    def config_json(self):
+        return self.to_dict()
+
 
 class DBCaseConfig(ABC):
     """Case specific vector database configs, usually uesed for index params like HNSW"""
+
     @abstractmethod
     def index_param(self) -> dict:
         raise NotImplementedError
@@ -60,7 +78,9 @@ class DBCaseConfig(ABC):
 
 class EmptyDBCaseConfig(BaseModel, DBCaseConfig):
     """EmptyDBCaseConfig will be used if the vector database has no case specific configs"""
+
     null: str | None = None
+
     def index_param(self) -> dict:
         return {}
 
@@ -81,6 +101,8 @@ class VectorDB(ABC):
         >>>     milvus.insert_embeddings()
         >>>     milvus.search_embedding()
     """
+
+    db_config: dict = {}
 
     @abstractmethod
     def __init__(
@@ -108,7 +130,7 @@ class VectorDB(ABC):
     @abstractmethod
     @contextmanager
     def init(self) -> None:
-        """ create and destory connections to database.
+        """create and destory connections to database.
 
         Examples:
             >>> with self.init():
@@ -119,6 +141,13 @@ class VectorDB(ABC):
     def need_normalize_cosine(self) -> bool:
         """Wheather this database need to normalize dataset to support COSINE"""
         return False
+
+    def convert_to_bitset(self, valid_ids: list[int]):
+        """filter_bitset should be calculated in advance when test Library
+        - reload train data to get the vaild ids according to filter-expr
+        - convert the valid ids to bitset that the client can recognize
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def insert_embeddings(
@@ -139,6 +168,11 @@ class VectorDB(ABC):
             int: inserted data count
         """
         raise NotImplementedError
+
+    def get_filters(self, case):
+        # Compatible with previous filter case (1p, 99p)
+        # DB client need overwrite the function when test hyrid_search case
+        return case.filters
 
     @abstractmethod
     def search_embedding(

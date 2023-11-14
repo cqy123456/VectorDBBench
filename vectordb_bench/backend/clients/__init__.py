@@ -31,7 +31,9 @@ class DB(Enum):
     PgVector = "PgVector"
     Redis = "Redis"
     Chroma = "Chroma"
-
+    Knowhere = "Knowhere"
+    KnowhereCloud = "KnowhereCloud"
+    
 
     @property
     def init_cls(self) -> Type[VectorDB]:
@@ -71,6 +73,14 @@ class DB(Enum):
         if self == DB.Chroma:
             from .chroma.chroma import ChromaClient
             return ChromaClient
+        
+        if self == DB.Knowhere:
+            from .knowhere.knowhere import Knowhere
+            return Knowhere
+        
+        if self == DB.KnowhereCloud:
+            from .knowhere_cloud.knowhere_cloud import KnowhereCloud
+            return KnowhereCloud
 
     @property
     def config_cls(self) -> Type[DBConfig]:
@@ -111,6 +121,15 @@ class DB(Enum):
             from .chroma.config import ChromaConfig
             return ChromaConfig
 
+        if self == DB.Knowhere:
+            from .knowhere.config import KnowhereConfig
+            return KnowhereConfig
+        
+        if self == DB.KnowhereCloud:
+            from .knowhere_cloud.config import KnowhereCloudConfig
+            return KnowhereCloudConfig
+
+
     def case_config_cls(self, index_type: IndexType | None = None) -> Type[DBCaseConfig]:
         if self == DB.Milvus:
             from .milvus.config import _milvus_case_config
@@ -135,6 +154,14 @@ class DB(Enum):
         if self == DB.PgVector:
             from .pgvector.config import PgVectorIndexConfig
             return PgVectorIndexConfig
+        
+        if self == DB.Knowhere:
+            from .knowhere.config import KnowhereIndexConfig
+            return KnowhereIndexConfig
+
+        if self == DB.KnowhereCloud:
+            from .knowhere_cloud.config import KnowhereCloudIndexConfig
+            return KnowhereCloudIndexConfig
 
         # DB.Pinecone, DB.Chroma, DB.Redis
         return EmptyDBCaseConfig

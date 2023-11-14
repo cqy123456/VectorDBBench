@@ -212,10 +212,12 @@ class TestResult(BaseModel):
 
 
         for f in filtered_results:
+            case_config = f.task_config.case_config
+            case = case_config.case_id.case_cls(case_config.custom_case)
             fmt.append(DATA_FORMAT%(
                 f.task_config.db.name,
                 f.task_config.db_config.db_label,
-                f.task_config.case_config.case_id.name,
+                f"{case.dataset.data.name}-{case.name}",
                 self.task_label,
                 f.metrics.load_duration,
                 f.metrics.qps,

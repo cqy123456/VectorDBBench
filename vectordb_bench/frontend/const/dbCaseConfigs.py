@@ -46,6 +46,7 @@ bunchCasesList: list[BunchCases] = [
             CaseType.PerformanceGlove200,
             CaseType.PerformanceLastFM,
             CaseType.PerformanceGIST768,
+            CaseType.PerformanceText2img,
         ],
     ),
     BunchCases(

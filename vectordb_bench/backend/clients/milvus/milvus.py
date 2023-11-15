@@ -26,7 +26,6 @@ class Milvus(VectorDB):
         collection_name: str = "VectorDBBenchCollection",
         drop_old: bool = False,
         name: str = "Milvus",
-        with_category_column: bool = False,
         category_column_names: list[str] = [],
         int_column_names: list[str] = ["id"],
         **kwargs,
@@ -40,15 +39,13 @@ class Milvus(VectorDB):
 
         self._primary_field = "pk"
         self._scalar_int_fields = int_column_names
+        self.category_column_names = category_column_names
         self._scalar_category_fields = (
             [
                 category_column_name.replace("-", "_")
                 for category_column_name in category_column_names
             ]
-            if with_category_column
-            else []
         )
-        self.category_column_names = category_column_names
         self._vector_field = "vector"
         self._index_name = "vector_idx"
 

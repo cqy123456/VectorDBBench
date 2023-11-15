@@ -263,6 +263,10 @@ class SerialSearchRunner:
         )
         with self.db.init():
             test_data, ground_truth = args
+            
+            MAX_TEST_QUERY_COUNT = 10_000
+            if len(test_data) > MAX_TEST_QUERY_COUNT:
+                test_data = test_data[:MAX_TEST_QUERY_COUNT]
 
             log.debug(f"test dataset size: {len(test_data)}")
             log.debug(

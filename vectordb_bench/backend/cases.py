@@ -41,6 +41,7 @@ class CaseType(Enum):
     PerformanceGlove200 = "PerformanceGlove200"
     PerformanceLastFM = "PerformanceLastFM"
     PerformanceGIST768 = "PerformanceGIST768"
+    PerformanceText2img = "PerformanceText2img"
 
     Performance1536D500K = 10
     Performance1536D5M = 11
@@ -179,6 +180,16 @@ class PerformanceGIST768(PerformanceCase):
     dataset: DatasetManager = Dataset.GIST_768.manager()
     name: str = "GIST 768 (1M, 768 Dim, L2)"
     description: str = """GIST, dim=768, n=1,000,000"""
+    load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
+    optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
+
+
+class PerformanceText2img(PerformanceCase):
+    case_id: CaseType = CaseType.PerformanceText2img
+    dataset: DatasetManager = Dataset.ScalarText2img.manager()
+    with_category_column: bool = False
+    name: str = "Text2img (5M, 200 Dim, IP)"
+    description: str = """Text2img, dim=200, n=5,000,000"""
     load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
 
@@ -341,7 +352,9 @@ class CustomIntFilter(CustomFilter):
     ):
         dataset = ScalarDatasetLabel(dataset_label).get_dataset()
         name = (
-            f"int-{int(filter_rate * 100)}p" if filter_rate is not None else f"{filter_rate}"
+            f"int-{int(filter_rate * 100)}p"
+            if filter_rate is not None
+            else f"{filter_rate}"
         )
         description = f"{dataset.data.name} - {name}"
         super().__init__(
@@ -504,6 +517,7 @@ type2case = {
     CaseType.PerformanceGlove200: PerformanceGlove200,
     CaseType.PerformanceLastFM: PerformanceLastFM,
     CaseType.PerformanceGIST768: PerformanceGIST768,
+    CaseType.PerformanceText2img: PerformanceText2img,
     CaseType.CustomIntFilter: CustomIntFilter,
     CaseType.CustomCategoryFilter: CustomCategoryFilter,
     CaseType.CustomAndFilter: CustomAndFilter,

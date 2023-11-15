@@ -55,7 +55,7 @@ class CaseRunner(BaseModel):
                 self.ca.label == CaseLabel.Performance
                 and self.ca.with_category_column == obj.ca.with_category_column
                 and self.config.db == obj.config.db
-                and self.config.db_case_config == obj.config.db_case_config
+                # and self.config.db_case_config == obj.config.db_case_config
                 and self.ca.dataset == obj.ca.dataset
             )
         return False
@@ -79,20 +79,20 @@ class CaseRunner(BaseModel):
         db_cls = self.config.db.init_cls
 
         dataset = self.ca.dataset.data
+        int_column_names = dataset.int_column_names
         # some dataset have category_scalars, but case doesn't need.
         category_column_names = dataset.category_column_names
         with_category_column = self.ca.with_category_column
         if with_category_column and len(category_column_names) == 0:
             raise RuntimeError(f"No category_columns for the case - {self.ca.name}")
-        int_column_names = dataset.int_column_names
+        _category_column_names = category_column_names if with_category_column else []
 
         self.db = db_cls(
             dim=dataset.dim,
             db_config=self.config.db_config.to_dict(),
             db_case_config=self.config.db_case_config,
             drop_old=drop_old,
-            with_category_column=with_category_column,
-            category_column_names=category_column_names,
+            category_column_names=_category_column_names,
             int_column_names=int_column_names,
         )
 

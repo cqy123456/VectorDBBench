@@ -20,7 +20,6 @@ def getChartsData():
     return singleFilterData
 
 
-
 def formatData(caseResults: list[CaseResult]):
     data = []
     for caseResult in caseResults:
@@ -44,7 +43,8 @@ def formatData(caseResults: list[CaseResult]):
                 "filter_type": filter_type,
                 "filter_rate": filter_rate if filter_rate is not None else -0.1,
                 "clause_num": f"{clause_num}",
-                "type_and_clause_num":f"{filter_type}-{clause_num}",
+                "type_and_clause_num": f"{filter_type}-{clause_num}",
+                "dbLabel_and_clause_num": f"{dbLabel}-{clause_num}",
                 "filter_fields": filter_fields,
                 **metrics,
             }

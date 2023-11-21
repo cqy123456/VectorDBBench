@@ -55,6 +55,7 @@ class CaseRunner(BaseModel):
                 self.ca.label == CaseLabel.Performance
                 and self.ca.with_category_column == obj.ca.with_category_column
                 and self.config.db == obj.config.db
+                and self.config.db_config == obj.config.db_config
                 # and self.config.db_case_config == obj.config.db_case_config
                 and self.ca.dataset == obj.ca.dataset
             )

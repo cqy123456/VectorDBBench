@@ -63,6 +63,7 @@ def drawChart(
         x=x,
         y=y,
         color=color,
+        line_group="dbLabel_and_clause_num",
         text=metric,
         markers=True,
         color_discrete_map=color_discrete_map,

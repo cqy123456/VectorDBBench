@@ -98,6 +98,8 @@ class SerialInsertRunner:
             for data_df in self.dataset:
                 all_metadata += data_df["id"].tolist()
                 all_embeddings += data_df["emb"].tolist()
+                # if len(all_metadata) >= 100_000:
+                #     break
 
             all_embeddings = np.array(all_embeddings).astype(np.float32)
             log.info(
@@ -263,7 +265,7 @@ class SerialSearchRunner:
         )
         with self.db.init():
             test_data, ground_truth = args
-            
+
             MAX_TEST_QUERY_COUNT = 10_000
             if len(test_data) > MAX_TEST_QUERY_COUNT:
                 test_data = test_data[:MAX_TEST_QUERY_COUNT]
@@ -350,11 +352,11 @@ class SerialSearchRunner:
                     gt = [[int(item[0]) for item in row] for row in gt]
                 recalls = [
                     calc_recall(
-                        min(self.k, len(gt[i % len(ground_truth)])),
-                        gt[i % len(ground_truth)][: self.k],
+                        min(self.k, len(gt[i])),
+                        gt[i][: self.k],
                         result,
                     )
-                    for i, result in enumerate(results)
+                    for i, result in enumerate(results[: min(len(gt), len(results))])
                 ]
 
             except Exception as e:

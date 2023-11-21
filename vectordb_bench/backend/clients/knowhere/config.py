@@ -7,7 +7,7 @@ class KnowhereConfig(DBConfig):
     test_type: str = TestType.LIBRARY.value
     index_type: str = "HNSW"
     config: str = (
-        '"M": 24, "efConstruction": 100, "ef": 100, "nlist": 1024, "nprobe": 64'
+        '"M": 30, "efConstruction": 360, "ef": 100, "nlist": 1024, "nprobe": 64'
     )
 
     def to_dict(self) -> dict:

@@ -18,7 +18,7 @@ class KnowhereCloud(VectorDB):
         db_case_config: KnowhereCloudIndexConfig,
         drop_old: bool = False,
         name: str = "Knowhere-Cloud",
-        tmp_dir_path="./results/tmp_knowhere",
+        tmp_dir_path="./vectordb_bench/results/tmp_knowhere",
         vectors_file="train_vectors.fbin",
         **kwargs,
     ):
@@ -86,6 +86,8 @@ class KnowhereCloud(VectorDB):
         **kwargs,
     ) -> (int, Exception):
         import knowhere
+        
+        self.index = None
 
         if len(embeddings) == 0:
             return 0, None

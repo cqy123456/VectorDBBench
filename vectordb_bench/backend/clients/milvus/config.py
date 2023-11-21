@@ -50,18 +50,26 @@ def get_col_ids_by_case(caseConfig: CaseConfig):
     elif case.case_id == CaseType.CustomIntFilter:
         return [0, 6]
     elif case.case_id == CaseType.CustomCategoryFilter:
-        return [0, case.category_column_idx + 1]
-    elif (
-        case.case_id == CaseType.CustomAndFilter
-        or case.case_id == CaseType.CustomOrFilter
-    ):
+        return [case.category_column_idx + 1]
+    elif case.case_id == CaseType.CustomAndFilter:
         return [
-            0,
-            *[
+            category_column_idx + 1
+            for category_column_idx in case.category_column_idxes
+        ]
+    elif case.case_id == CaseType.CustomOrFilter:
+        if len(case.category_column_idxes) == 1:
+            return [
                 category_column_idx + 1
                 for category_column_idx in case.category_column_idxes
-            ],
-        ]
+            ]
+        else:
+            return [
+                0,
+                *[
+                    category_column_idx + 1
+                    for category_column_idx in case.category_column_idxes
+                ],
+            ]
     return [0]
 
 

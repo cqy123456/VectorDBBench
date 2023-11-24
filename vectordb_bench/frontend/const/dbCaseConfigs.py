@@ -122,6 +122,8 @@ CaseConfigParamInput_IndexType = CaseConfigInput(
             IndexType.DISKANN.value,
             IndexType.Flat.value,
             IndexType.AUTOINDEX.value,
+            IndexType.GPU_IVF_FLAT.value,
+            IndexType.GPU_IVF_PQ.value,
         ],
     },
 )
@@ -239,7 +241,35 @@ CaseConfigParamInput_Nlist = CaseConfigInput(
         "value": 1000,
     },
     isDisplayed=lambda config: config.get(CaseConfigParamType.IndexType, None)
-    == IndexType.IVFFlat.value,
+    in [
+        IndexType.IVFFlat.value,
+        IndexType.GPU_IVF_FLAT.value,
+        IndexType.GPU_IVF_PQ.value,
+    ],
+)
+
+CaseConfigParamInput_M_PQ = CaseConfigInput(
+    label=CaseConfigParamType.m,
+    inputType=InputType.Number,
+    inputConfig={
+        "min": 1,
+        "max": 65536,
+        "value": 1,
+    },
+    isDisplayed=lambda config: config.get(CaseConfigParamType.IndexType, None)
+    == IndexType.GPU_IVF_PQ.value,
+)
+
+CaseConfigParamInput_Nbits_PQ = CaseConfigInput(
+    label=CaseConfigParamType.nbits,
+    inputType=InputType.Number,
+    inputConfig={
+        "min": 1,
+        "max": 65536,
+        "value": 1,
+    },
+    isDisplayed=lambda config: config.get(CaseConfigParamType.IndexType, None)
+    == IndexType.GPU_IVF_PQ.value,
 )
 
 CaseConfigParamInput_Nprobe = CaseConfigInput(
@@ -251,7 +281,11 @@ CaseConfigParamInput_Nprobe = CaseConfigInput(
         "value": 10,
     },
     isDisplayed=lambda config: config.get(CaseConfigParamType.IndexType, None)
-    == IndexType.IVFFlat.value,
+    in [
+        IndexType.IVFFlat.value,
+        IndexType.GPU_IVF_FLAT.value,
+        IndexType.GPU_IVF_PQ.value,
+    ],
 )
 
 CaseConfigParamInput_Lists = CaseConfigInput(
@@ -280,6 +314,8 @@ MilvusLoadConfig = [
     CaseConfigParamInput_M,
     CaseConfigParamInput_EFConstruction_Milvus,
     CaseConfigParamInput_Nlist,
+    CaseConfigParamInput_M_PQ,
+    CaseConfigParamInput_Nbits_PQ,
 ]
 MilvusPerformanceConfig = [
     CaseConfigParamInput_IndexType,
@@ -288,6 +324,8 @@ MilvusPerformanceConfig = [
     CaseConfigParamInput_EF_Milvus,
     CaseConfigParamInput_SearchList,
     CaseConfigParamInput_Nlist,
+    CaseConfigParamInput_M_PQ,
+    CaseConfigParamInput_Nbits_PQ,
     CaseConfigParamInput_Nprobe,
 ]
 

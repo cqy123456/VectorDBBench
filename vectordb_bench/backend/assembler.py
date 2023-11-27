@@ -23,7 +23,7 @@ class Assembler:
             c.dataset.data.use_shuffled = False
 
         groundtruth_file = c.get_ground_truth_file()
-        if c.dataset.check_case_has_groundtruth(groundtruth_file):
+        if c.dataset.data.check_s3 or c.dataset.check_case_has_groundtruth(groundtruth_file):
             runner = CaseRunner(
                 run_id=run_id,
                 config=task,

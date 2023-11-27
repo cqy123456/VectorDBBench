@@ -78,7 +78,7 @@ class HNSWConfig(MilvusIndexConfig, DBCaseConfig):
     efConstruction: int = 360
     ef: int = 100
     index: IndexType = IndexType.HNSW
-    caseConfig: CaseConfig = CaseConfig(case_id=CaseType.Custom, custom_case={})
+    caseConfig: CaseConfig = CaseConfig(case_id=CaseType.Performance768D1M, custom_case={})
 
     def index_param(self) -> dict:
         return {

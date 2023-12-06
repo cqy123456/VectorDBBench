@@ -4,6 +4,7 @@ import traceback
 import concurrent
 import numpy as np
 from enum import Enum, auto
+import gc
 
 from vectordb_bench.backend.dataset import category_num_to_column_name
 
@@ -176,6 +177,11 @@ class CaseRunner(BaseModel):
                 m.qps = self._conc_search()
             if test_type == api.TestType.LIBRARY:
                 m.recall, m.qps = serial_search_results
+            
+            del self.serial_search_runner
+            del self.search_runner
+            gc.collect()
+            
         except Exception as e:
             log.warning(f"Failed to run performance case, reason = {e}")
             traceback.print_exc()
@@ -257,7 +263,7 @@ class CaseRunner(BaseModel):
         test_emb = np.stack(test_data["emb"])
         if self.normalize:
             test_emb = test_emb / np.linalg.norm(test_emb, axis=1)[:, np.newaxis]
-        self.test_emb = test_emb.tolist()
+        test_emb = test_emb.tolist()
 
         gt_df = self.ca.dataset.get_ground_truth(self.ca.get_ground_truth_file())
 
@@ -278,7 +284,7 @@ class CaseRunner(BaseModel):
 
         self.serial_search_runner = SerialSearchRunner(
             db=self.db,
-            test_data=self.test_emb,
+            test_data=test_emb,
             ground_truth=gt_df,
             filters=filters,
             valid_ids=valid_ids,
@@ -286,7 +292,7 @@ class CaseRunner(BaseModel):
 
         self.search_runner = MultiProcessingSearchRunner(
             db=self.db,
-            test_data=self.test_emb,
+            test_data=test_emb,
             filters=filters,
         )
 

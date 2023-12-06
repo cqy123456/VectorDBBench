@@ -253,7 +253,8 @@ class CaseRunner(BaseModel):
                 raise e from None
 
     def _init_search_runner(self):
-        test_emb = np.stack(self.ca.dataset.test_data["emb"])
+        test_data = self.ca.dataset.get_test_data()
+        test_emb = np.stack(test_data["emb"])
         if self.normalize:
             test_emb = test_emb / np.linalg.norm(test_emb, axis=1)[:, np.newaxis]
         self.test_emb = test_emb.tolist()

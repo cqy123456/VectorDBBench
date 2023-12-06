@@ -289,7 +289,7 @@ class DatasetManager(BaseModel):
     """
 
     data: BaseDatasetWithDefaultSize
-    test_data: pd.DataFrame | None = None
+    # test_data: pd.DataFrame | None = None
     train_files: list[str] = []
 
     def __eq__(self, obj):
@@ -442,8 +442,11 @@ class DatasetManager(BaseModel):
             [f.name for f in self.data_dir.glob(f"{prefix}*.parquet")]
         )
         log.debug(f"{self.data.name}: available train files {self.train_files}")
-        self.test_data = self._read_file("test.parquet")
+        # self.test_data = self._read_file("test.parquet")
         return True
+    
+    def get_test_data(self):
+        return self._read_file("test.parquet")
 
     def check_case_has_groundtruth(self, groundtruth_file: str) -> bool:
         if (

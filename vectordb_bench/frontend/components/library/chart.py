@@ -66,8 +66,15 @@ def drawQPSAndRecallChart(st, data, colorAttr, shapeAttr, textAttr, labels, **kw
 def drawLoadDurationChart(st, data, colorAttr, **kwargs):
     x = "load_duration"
     y = "dbLabel"
+    
+    y_to_data = {
+        d[y]: d
+        for d in data
+    }
+    _data = y_to_data.values()
+    
     fig = px.bar(
-        data,
+        _data,
         y=y,
         x=x,
         color=colorAttr,

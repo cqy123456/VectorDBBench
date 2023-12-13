@@ -15,7 +15,7 @@ def main():
 def run_cmd():
     cmd = [
         "python",
-        f"{os.path.dirname(__file__)}/backend/run_tasks_cmd.py",
+        f"{os.path.dirname(__file__)}/cmd/run.py",
     ]
     log.info(f"go go go cmd")
     log.debug(f"cmd: {cmd}")

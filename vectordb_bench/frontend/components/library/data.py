@@ -39,8 +39,9 @@ def formatData(caseResults: list[CaseResult]):
     for caseResult in caseResults:
         db = caseResult.task_config.db.value
         dbLabel = caseResult.task_config.db_config.db_label
-        configs = caseResult.task_config.db_config.config_json
-        labels = labels | configs.keys()
+        build_configs = caseResult.task_config.db_config.config_json
+        search_configs = caseResult.task_config.db_case_config.search_param()
+        labels = labels | build_configs.keys() | search_configs.keys()
         dbName = caseResult.task_config.db_name
         case_config = caseResult.task_config.case_config
         case = case_config.case_id.case_cls(case_config.custom_case)
@@ -52,7 +53,8 @@ def formatData(caseResults: list[CaseResult]):
                 "dbLabel": dbLabel,
                 "dbName": dbName,
                 "case": caseName,
-                **configs,
+                **build_configs,
+                **search_configs,
                 **asdict(metrics),
             }
         )

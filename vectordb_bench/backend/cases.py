@@ -40,8 +40,10 @@ class CaseType(Enum):
     Performance768D1M99P = 9
     PerformanceGlove200 = "PerformanceGlove200"
     PerformanceLastFM = "PerformanceLastFM"
-    PerformanceGIST768 = "PerformanceGIST768"
-    PerformanceText2img = "PerformanceText2img"
+    PerformanceGIST768Internal = "PerformanceGIST768Internal"
+    PerformanceText2imgInternal = "PerformanceText2imgInternal"
+    PerformanceCohereInternal = "PerformanceCohereInternal"
+    PerformanceOpenAIInternal = "PerformanceOpenAIInternal"
 
     Performance1536D500K = 10
     Performance1536D5M = 11
@@ -175,21 +177,42 @@ class PerformanceLastFM(PerformanceCase):
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
 
 
-class PerformanceGIST768(PerformanceCase):
-    case_id: CaseType = CaseType.PerformanceGIST768
-    dataset: DatasetManager = Dataset.GIST_768.manager()
+class PerformanceGIST768Internal(PerformanceCase):
+    case_id: CaseType = CaseType.PerformanceGIST768Internal
+    dataset: DatasetManager = Dataset.ScalarGIST768.manager()
+    with_category_column: bool = False
     name: str = "GIST 768 (1M, 768 Dim, L2)"
-    description: str = """GIST, dim=768, n=1,000,000"""
+    description: str = """GIST, dim=768, n=1,000,000, Internal"""
     load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
 
 
-class PerformanceText2img(PerformanceCase):
-    case_id: CaseType = CaseType.PerformanceText2img
+class PerformanceText2imgInternal(PerformanceCase):
+    case_id: CaseType = CaseType.PerformanceText2imgInternal
     dataset: DatasetManager = Dataset.ScalarText2img.manager()
     with_category_column: bool = False
     name: str = "Text2img (5M, 200 Dim, IP)"
-    description: str = """Text2img, dim=200, n=5,000,000"""
+    description: str = """Text2img, dim=200, n=5,000,000, Internal"""
+    load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
+    optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
+
+
+class PerformanceCohereInternal(PerformanceCase):
+    case_id: CaseType = CaseType.PerformanceCohereInternal
+    dataset: DatasetManager = Dataset.ScalarCohere.manager()
+    with_category_column: bool = False
+    name: str = "Cohere (1M, 768 Dim, Cosine)"
+    description: str = """Cohere, dim=768, n=1,000,000, Internal"""
+    load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
+    optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
+
+
+class PerformanceOpenAIInternal(PerformanceCase):
+    case_id: CaseType = CaseType.PerformanceOpenAIInternal
+    dataset: DatasetManager = Dataset.ScalarOpenAI.manager()
+    with_category_column: bool = False
+    name: str = "OpenAI (500K, 1536 Dim, Cosine)"
+    description: str = """OpenAI, dim=1536, n=500,000, Internal"""
     load_timeout: float | int = config.LOAD_TIMEOUT_768D_1M
     optimize_timeout: float | int | None = config.OPTIMIZE_TIMEOUT_768D_1M
 
@@ -516,8 +539,10 @@ type2case = {
     CaseType.Performance1536D5M99P: Performance1536D5M99P,
     CaseType.PerformanceGlove200: PerformanceGlove200,
     CaseType.PerformanceLastFM: PerformanceLastFM,
-    CaseType.PerformanceGIST768: PerformanceGIST768,
-    CaseType.PerformanceText2img: PerformanceText2img,
+    CaseType.PerformanceGIST768Internal: PerformanceGIST768Internal,
+    CaseType.PerformanceText2imgInternal: PerformanceText2imgInternal,
+    CaseType.PerformanceCohereInternal: PerformanceCohereInternal,
+    CaseType.PerformanceOpenAIInternal: PerformanceOpenAIInternal,
     CaseType.CustomIntFilter: CustomIntFilter,
     CaseType.CustomCategoryFilter: CustomCategoryFilter,
     CaseType.CustomAndFilter: CustomAndFilter,

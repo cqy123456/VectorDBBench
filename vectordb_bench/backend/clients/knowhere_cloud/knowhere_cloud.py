@@ -37,7 +37,7 @@ class KnowhereCloud(VectorDB):
         self.bitset = None
         indexFile = (
             self.db_config.get("index_type")
-            + "_"
+            + f"_{db_case_config.metric_type.value}_{dim}d_"
             + db_config.get("config")
             .replace('"', "")
             .replace(" ", "")
@@ -62,8 +62,10 @@ class KnowhereCloud(VectorDB):
     def init(self) -> None:
         import knowhere
 
-        index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
-        filePath = pathlib.Path(self.indexFile + "_mem.index.bin")
+        indexType=self.db_config.get("index_type")
+        index = knowhere.CreateIndex(indexType, self.version)
+        suffix = "_disk.index" if indexType == "DISKANN" else "_mem.index.bin"
+        filePath = pathlib.Path(self.indexFile + suffix)
         if filePath.exists():
             log.info(
                 f"Index file existed; Load the index file and Deserialize; {self.indexFile}"
@@ -86,7 +88,7 @@ class KnowhereCloud(VectorDB):
         **kwargs,
     ) -> (int, Exception):
         import knowhere
-        
+
         self.index = None
 
         if len(embeddings) == 0:
@@ -107,7 +109,7 @@ class KnowhereCloud(VectorDB):
         self.config["data_path"] = self.vectors_file
         self.config["index_prefix"] = self.indexFile
         index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
-        log.info(f"config: {self.config}")
+        log.info(f"build config: {self.config}")
         index.Build(knowhere.GetNullDataSet(), json.dumps(self.config))
         log.info(f"Serialize and dump the trained index to {self.indexFile}")
         index.Serialize(knowhere.GetNullDataSet())
@@ -138,6 +140,7 @@ class KnowhereCloud(VectorDB):
         bitset = (
             self.bitset.GetBitSetView() if self.bitset else knowhere.GetNullBitSetView()
         )
+        log.info(f"search config: {self.config}")
         ans, _ = self.index.Search(query, json.dumps(self.config), bitset)
         k_dis, k_ids = knowhere.DataSetToArray(ans)
         return k_ids.tolist()

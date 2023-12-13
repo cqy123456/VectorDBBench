@@ -25,6 +25,9 @@ class KnowhereConfig(DBConfig):
 
 class KnowhereIndexConfig(BaseModel, DBCaseConfig):
     metric_type: MetricType | None = None
+    nprobe: int | None = None
+    ef: int | None = None
+    search_list_size: int | None = None
 
     def parse_metric(self) -> str:
         return self.metric_type.value
@@ -35,4 +38,11 @@ class KnowhereIndexConfig(BaseModel, DBCaseConfig):
         }
         
     def search_param(self) -> str:
-        return self.index_param()
+        params = {"metric_type": self.parse_metric()}
+        if self.nprobe != None:
+            params['nprobe'] = self.nprobe
+        if self.ef != None:
+            params['ef'] = self.ef
+        if self.search_list_size != None:
+            params['search_list_size'] = self.search_list_size
+        return params

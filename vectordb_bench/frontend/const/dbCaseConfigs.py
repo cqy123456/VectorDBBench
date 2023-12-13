@@ -45,8 +45,10 @@ bunchCasesList: list[BunchCases] = [
             Delimiter.Line,
             CaseType.PerformanceGlove200,
             CaseType.PerformanceLastFM,
-            CaseType.PerformanceGIST768,
-            CaseType.PerformanceText2img,
+            CaseType.PerformanceGIST768Internal,
+            CaseType.PerformanceText2imgInternal,
+            CaseType.PerformanceCohereInternal,
+            CaseType.PerformanceOpenAIInternal,
         ],
     ),
     BunchCases(
@@ -94,7 +96,10 @@ NonFilterCaseList: list[CaseType] = [
     CaseType.Performance1536D500K,
     CaseType.PerformanceGlove200,
     CaseType.PerformanceLastFM,
-    CaseType.PerformanceGIST768,
+    CaseType.PerformanceGIST768Internal,
+    CaseType.PerformanceText2imgInternal,
+    CaseType.PerformanceCohereInternal,
+    CaseType.PerformanceOpenAIInternal,
 ]
 
 
@@ -330,7 +335,10 @@ CASE_CONFIG_MAP = {
         CaseType.Performance1536D500K99P: MilvusPerformanceConfig,
         CaseType.PerformanceGlove200: MilvusPerformanceConfig,
         CaseType.PerformanceLastFM: MilvusPerformanceConfig,
-        CaseType.PerformanceGIST768: MilvusPerformanceConfig,
+        CaseType.PerformanceGIST768Internal: MilvusPerformanceConfig,
+        CaseType.PerformanceText2imgInternal: MilvusPerformanceConfig,
+        CaseType.PerformanceCohereInternal: MilvusPerformanceConfig,
+        CaseType.PerformanceOpenAIInternal: MilvusPerformanceConfig,
     },
     DB.WeaviateCloud: {
         CaseType.CapacityDim960: WeaviateLoadConfig,

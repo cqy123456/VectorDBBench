@@ -17,6 +17,7 @@ class Knowhere(VectorDB):
         db_case_config: KnowhereIndexConfig,
         drop_old: bool = False,
         name: str = "Knowhere",
+        tmp_dir_path="./vectordb_bench/results/tmp_knowhere/",
         **kwargs,
     ):
         self.name = name
@@ -27,10 +28,14 @@ class Knowhere(VectorDB):
         self.config["dim"] = dim
 
         import knowhere
+
         self.version = knowhere.GetCurrentVersion()
-        self.indexFile = (
+        tmp_dir = pathlib.Path(tmp_dir_path)
+        if not tmp_dir.exists():
+            tmp_dir.mkdir(parents=True)
+        self.indexFile = tmp_dir_path + (
             self.db_config.get("index_type")
-            + "_"
+            + f"_{db_case_config.metric_type.value}_{dim}d_"
             + db_config.get("config")
             .replace('"', "")
             .replace(" ", "")
@@ -38,7 +43,7 @@ class Knowhere(VectorDB):
             .replace(",", "_")
             + ".index"
         )
-        
+
         self.index = None
         self.bitset = None
 
@@ -53,6 +58,7 @@ class Knowhere(VectorDB):
     @contextmanager
     def init(self) -> None:
         import knowhere
+
         index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
         filePath = pathlib.Path(self.indexFile)
         if filePath.exists():
@@ -77,6 +83,7 @@ class Knowhere(VectorDB):
     ) -> (int, Exception):
         log.info(f"Start building index with {len(embeddings)} vectors")
         import knowhere
+
         data = knowhere.ArrayToDataSet(embeddings)
         self.config.update(self.case_config.index_param())
         log.info(
@@ -108,16 +115,21 @@ class Knowhere(VectorDB):
         filters: dict | None = None,
     ) -> list[int]:
         import knowhere
+
         query = knowhere.ArrayToDataSet(queryData)
         self.config.update(self.case_config.search_param())
         self.config["k"] = k
-        bitset = self.bitset.GetBitSetView() if self.bitset else knowhere.GetNullBitSetView()
+        bitset = (
+            self.bitset.GetBitSetView() if self.bitset else knowhere.GetNullBitSetView()
+        )
+        log.info(f"search config: {self.config}")
         ans, _ = self.index.Search(query, json.dumps(self.config), bitset)
         k_dis, k_ids = knowhere.DataSetToArray(ans)
         return k_ids.tolist()
 
     def convert_to_bitset(self, valid_ids: list[int]):
         import knowhere
+
         log.info("Convert valid ids to knowher-bitset")
         rowCount = self.index.Count()
         bitset = knowhere.CreateBitSet(rowCount)

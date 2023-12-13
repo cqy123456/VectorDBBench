@@ -369,7 +369,7 @@ class SerialSearchRunner:
         log.info(
             f"{mp.current_process().name:14} search entire test_data: "
             f"cost={int(latency)}s, "
-            f"queries={len(recalls)}, "
+            f"queries={len(test_data)}, "
             f"avg_recall={avg_recall}, "
             f"qps={qps}"
         )

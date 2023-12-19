@@ -14,7 +14,7 @@ def main():
 
 def run_cmd():
     cmd = [
-        "python",
+        "python3",
         f"{os.path.dirname(__file__)}/cmd/run.py",
     ]
     log.info(f"go go go cmd")

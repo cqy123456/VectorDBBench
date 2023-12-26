@@ -26,8 +26,13 @@ class Knowhere(VectorDB):
         self.dim = dim
         self.config = json.loads(f'{{{self.db_config.get("config")}}}')
         self.config["dim"] = dim
+        self.build_threads = db_config.get("build_threads", 2)
+        self.search_threads = db_config.get("search_threads", 2)
 
         import knowhere
+        
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
 
         self.version = knowhere.GetCurrentVersion()
         tmp_dir = pathlib.Path(tmp_dir_path)
@@ -58,6 +63,9 @@ class Knowhere(VectorDB):
     @contextmanager
     def init(self) -> None:
         import knowhere
+        
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
 
         index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
         filePath = pathlib.Path(self.indexFile)
@@ -83,6 +91,9 @@ class Knowhere(VectorDB):
     ) -> (int, Exception):
         log.info(f"Start building index with {len(embeddings)} vectors")
         import knowhere
+        
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
 
         data = knowhere.ArrayToDataSet(embeddings)
         self.config.update(self.case_config.index_param())

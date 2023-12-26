@@ -12,6 +12,8 @@ from vectordb_bench.models import CaseConfig, TaskConfig
 import json
 from vectordb_bench.cmd.knowhere_ci.config import (
     case_ids,
+    build_threads,
+    search_threads,
     get_ivfflat_params,
     get_hnsw_params,
     get_diskann_params,
@@ -39,6 +41,8 @@ def knowhere_ivfflat_tasks(case_ids: list[CaseType]) -> list[TaskConfig]:
         index_type=index_type,
         config=json.dumps(build_config)[1:-1],
         db_label=db_label,
+        build_threads=build_threads,
+        search_threads=search_threads,
     )
 
     for case_id in case_ids:
@@ -67,6 +71,8 @@ def knowhere_hnsw_tasks(case_ids: list[CaseType]) -> list[TaskConfig]:
         index_type=index_type,
         config=json.dumps(build_config)[1:-1],
         db_label=db_label,
+        build_threads=build_threads,
+        search_threads=search_threads,
     )
 
     for case_id in case_ids:
@@ -102,6 +108,8 @@ def knowhere_diskann_tasks(case_ids: list[CaseType]) -> list[TaskConfig]:
             index_type=index_type,
             config=json.dumps(build_config)[1:-1],
             db_label=db_label,
+            build_threads=build_threads,
+            search_threads=search_threads,
         )
 
         for search_list_size in diskann_params["search"]["search_list_size"]:

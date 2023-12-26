@@ -11,6 +11,9 @@ case_ids: list[CaseType] = [
     CaseType.PerformanceText2imgInternal,
 ]
 
+build_threads = 8
+search_threads = 8
+
 
 def get_ivfflat_params():
     return {

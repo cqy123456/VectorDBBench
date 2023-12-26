@@ -9,6 +9,8 @@ import json
 class KnowhereCloudConfig(DBConfig):
     test_type: str = TestType.LIBRARY.value
     index_type: str = "HNSW"
+    build_threads: int = 4
+    search_threads: int = 4
     config: str = (
         '"M": 30, "efConstruction": 360, "ef": 100, "nlist": 1024, "nprobe": 64'
     )
@@ -17,6 +19,8 @@ class KnowhereCloudConfig(DBConfig):
         return {
             "index_type": self.index_type,
             "config": self.config,
+            "search_threads": self.search_threads,
+            "build_threads": self.build_threads,
         }
 
     @property

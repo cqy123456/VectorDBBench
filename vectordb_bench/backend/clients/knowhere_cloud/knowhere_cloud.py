@@ -29,8 +29,13 @@ class KnowhereCloud(VectorDB):
         # self.config = self.db_config.get("config") + f', "dim": {dim}'
         self.config = json.loads(f'{{{self.db_config.get("config")}}}')
         self.config["dim"] = dim
+        self.build_threads = db_config.get("build_threads", 2)
+        self.search_threads = db_config.get("search_threads", 2)
 
         import knowhere
+        
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
 
         self.version = knowhere.GetCurrentVersion()
         self.index = None
@@ -61,6 +66,9 @@ class KnowhereCloud(VectorDB):
     @contextmanager
     def init(self) -> None:
         import knowhere
+        
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
 
         indexType=self.db_config.get("index_type")
         index = knowhere.CreateIndex(indexType, self.version)
@@ -88,6 +96,9 @@ class KnowhereCloud(VectorDB):
         **kwargs,
     ) -> (int, Exception):
         import knowhere
+        
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
 
         self.index = None
 

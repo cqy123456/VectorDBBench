@@ -9,6 +9,9 @@ import json
 class KnowhereCloudConfig(DBConfig):
     test_type: str = TestType.LIBRARY.value
     index_type: str = "HNSW"
+    build_threads: int = 2
+    search_threads: int = 2
+    with_cardinal: int = 0 # 0 means false
     config: str = (
         '"M": 30, "efConstruction": 360, "ef": 100, "nlist": 1024, "nprobe": 64'
     )
@@ -17,6 +20,9 @@ class KnowhereCloudConfig(DBConfig):
         return {
             "index_type": self.index_type,
             "config": self.config,
+            "search_threads": self.search_threads,
+            "build_threads": self.build_threads,
+            "with_cardinal": self.with_cardinal,
         }
 
     @property
@@ -37,11 +43,4 @@ class KnowhereCloudIndexConfig(BaseModel, DBCaseConfig):
         return {"metric_type": self.parse_metric()}
 
     def search_param(self) -> str:
-        efConstruction = 8
-        col_ids = get_col_ids_by_case(self.caseConfig)
-        for col_id in col_ids:
-            if col_id == 0:
-                efConstruction += 1
-            else:
-                efConstruction += 2 << (col_id - 1)
-        return {"metric_type": self.parse_metric(), "efConstruction": efConstruction}
+        return {"metric_type": self.parse_metric()}

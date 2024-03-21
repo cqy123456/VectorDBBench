@@ -29,8 +29,13 @@ class KnowhereCloud(VectorDB):
         # self.config = self.db_config.get("config") + f', "dim": {dim}'
         self.config = json.loads(f'{{{self.db_config.get("config")}}}')
         self.config["dim"] = dim
+        self.build_threads = db_config.get("build_threads", 2)
+        self.search_threads = db_config.get("search_threads", 2)
 
         import knowhere
+
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
 
         self.version = knowhere.GetCurrentVersion()
         self.index = None
@@ -62,8 +67,20 @@ class KnowhereCloud(VectorDB):
     def init(self) -> None:
         import knowhere
 
-        index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
-        filePath = pathlib.Path(self.indexFile + "_mem.index.bin")
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
+
+        indexType = self.db_config.get("index_type")
+        index = knowhere.CreateIndex(indexType, self.version)
+        # knowhere-cardinal-diskann use "_disk.index.bin"
+        # knowhere-diskann use "_disk.index"
+        suffix = "_mem.index.bin"
+        if indexType == "DISKANN":
+            if self.config["with_cardinal"]:
+                suffix = "_disk.index.bin"
+            else:
+                suffix = "_disk.index"
+        filePath = pathlib.Path(self.indexFile + suffix)
         if filePath.exists():
             log.info(
                 f"Index file existed; Load the index file and Deserialize; {self.indexFile}"
@@ -86,7 +103,7 @@ class KnowhereCloud(VectorDB):
         **kwargs,
     ) -> (int, Exception):
         import knowhere
-        
+
         self.index = None
 
         if len(embeddings) == 0:
@@ -106,8 +123,9 @@ class KnowhereCloud(VectorDB):
         self.config.update(self.case_config.index_param())
         self.config["data_path"] = self.vectors_file
         self.config["index_prefix"] = self.indexFile
-        index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
-        log.info(f"config: {self.config}")
+        index = knowhere.CreateIndex(
+            self.db_config.get("index_type"), self.version)
+        log.info(f"build config: {self.config}")
         index.Build(knowhere.GetNullDataSet(), json.dumps(self.config))
         log.info(f"Serialize and dump the trained index to {self.indexFile}")
         index.Serialize(knowhere.GetNullDataSet())
@@ -138,6 +156,7 @@ class KnowhereCloud(VectorDB):
         bitset = (
             self.bitset.GetBitSetView() if self.bitset else knowhere.GetNullBitSetView()
         )
+        log.info(f"search config: {self.config}")
         ans, _ = self.index.Search(query, json.dumps(self.config), bitset)
         k_dis, k_ids = knowhere.DataSetToArray(ans)
         return k_ids.tolist()

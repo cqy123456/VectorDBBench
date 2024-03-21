@@ -16,6 +16,7 @@ class Knowhere(VectorDB):
         db_config: dict,
         db_case_config: KnowhereIndexConfig,
         drop_old: bool = False,
+        tmp_dir_path="./vectordb_bench/results/tmp_knowhere",
         name: str = "Knowhere",
         **kwargs,
     ):
@@ -25,10 +26,16 @@ class Knowhere(VectorDB):
         self.dim = dim
         self.config = json.loads(f'{{{self.db_config.get("config")}}}')
         self.config["dim"] = dim
+        self.build_threads = db_config.get("build_threads", 2)
+        self.search_threads = db_config.get("search_threads", 2)
 
         import knowhere
+        
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
+
         self.version = knowhere.GetCurrentVersion()
-        self.indexFile = (
+        indexFile = (
             self.db_config.get("index_type")
             + "_"
             + db_config.get("config")
@@ -38,6 +45,10 @@ class Knowhere(VectorDB):
             .replace(",", "_")
             + ".index"
         )
+        tmp_dir = pathlib.Path(tmp_dir_path)
+        if not tmp_dir.exists():
+            tmp_dir.mkdir(parents=True)
+        self.indexFile = (tmp_dir / indexFile).as_posix()
         
         self.index = None
         self.bitset = None
@@ -53,6 +64,10 @@ class Knowhere(VectorDB):
     @contextmanager
     def init(self) -> None:
         import knowhere
+        
+        knowhere.SetBuildThreadPool(self.build_threads)
+        knowhere.SetSearchThreadPool(self.search_threads)
+
         index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
         filePath = pathlib.Path(self.indexFile)
         if filePath.exists():

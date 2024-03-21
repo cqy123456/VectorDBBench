@@ -70,9 +70,17 @@ class KnowhereCloud(VectorDB):
         knowhere.SetBuildThreadPool(self.build_threads)
         knowhere.SetSearchThreadPool(self.search_threads)
 
-        indexType=self.db_config.get("index_type")
+        indexType = self.db_config.get("index_type")
         index = knowhere.CreateIndex(indexType, self.version)
-        suffix = "_disk.index" if indexType == "DISKANN" else "_mem.index.bin"
+        # knowhere-cardinal-diskann use "_disk.index.bin"
+        # knowhere-diskann use "_disk.index"
+        suffix = "_mem.index.bin"
+        if indexType == "DISKANN":
+            if self.config["with_cardinal"]:
+                suffix = "_disk.index.bin"
+            else:
+                suffix = "_disk.index"
+
         filePath = pathlib.Path(self.indexFile + suffix)
         if filePath.exists():
             log.info(
@@ -96,9 +104,6 @@ class KnowhereCloud(VectorDB):
         **kwargs,
     ) -> (int, Exception):
         import knowhere
-        
-        knowhere.SetBuildThreadPool(self.build_threads)
-        knowhere.SetSearchThreadPool(self.search_threads)
 
         self.index = None
 

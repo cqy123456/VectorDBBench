@@ -19,6 +19,8 @@ class IndexType(str, Enum):
     Flat = "FLAT"
     AUTOINDEX = "AUTOINDEX"
     ES_HNSW = "hnsw"
+    GPU_IVF_FLAT = "GPU_IVF_FLAT"
+    GPU_IVF_PQ = "GPU_IVF_PQ"
 
 
 class TestType(str, Enum):

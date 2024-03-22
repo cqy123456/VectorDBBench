@@ -27,16 +27,21 @@ pip install -e ".[test]"
 config file location: "vectordb_bench/cmd/knowhere_ci/config.py"
 
 ```
-cmd_bench
+knowhere_ci
+```
+or
+```
+cardinal_ci
 ```
 
 ## Get Results
 
 use `Python`
 ```python
-from vectordb_bench.cmd.knowhere_ci.run import get_knowhere_test_results
+from vectordb_bench.cmd.knowhere_ci.run import get_knowhere_test_results, get_cardinal_test_results
 
 data = get_knowhere_test_results()
+data = get_cardinal_test_results()
 
 print(data)
 """

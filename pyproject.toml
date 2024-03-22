@@ -68,6 +68,7 @@ chromadb = [ "chromadb" ]
 
 [project.scripts]
 init_bench = "vectordb_bench.__main__:main"
-cmd_bench = "vectordb_bench.__cmd__:main"
+knowhere_ci = "vectordb_bench.__cmd__:knowhere_ci"
+cardinal_ci = "vectordb_bench.__cmd__:cardinal_ci"
 
 [tool.setuptools_scm]

@@ -12,6 +12,40 @@ def main():
     run_cmd()
 
 
+def knowhere_ci():
+    log.info(f"all configs: {config().display()}")
+    cmd = [
+        "python3",
+        f"{os.path.dirname(__file__)}/cmd/run_knowhere_ci.py",
+    ]
+    log.info(f"go go go cmd")
+    log.debug(f"cmd: {cmd}")
+    try:
+        subprocess.run(cmd, check=True)
+    except KeyboardInterrupt:
+        log.info("exit")
+    except Exception as e:
+        log.warning(
+            f"exit, err={e}\nstack trace={traceback.format_exc(chain=True)}")
+
+
+def cardinal_ci():
+    log.info(f"all configs: {config().display()}")
+    cmd = [
+        "python3",
+        f"{os.path.dirname(__file__)}/cmd/run_cardinal_ci.py",
+    ]
+    log.info(f"go go go cmd")
+    log.debug(f"cmd: {cmd}")
+    try:
+        subprocess.run(cmd, check=True)
+    except KeyboardInterrupt:
+        log.info("exit")
+    except Exception as e:
+        log.warning(
+            f"exit, err={e}\nstack trace={traceback.format_exc(chain=True)}")
+
+
 def run_cmd():
     cmd = [
         "python3",
@@ -24,7 +58,8 @@ def run_cmd():
     except KeyboardInterrupt:
         log.info("exit")
     except Exception as e:
-        log.warning(f"exit, err={e}\nstack trace={traceback.format_exc(chain=True)}")
+        log.warning(
+            f"exit, err={e}\nstack trace={traceback.format_exc(chain=True)}")
 
 
 if __name__ == "__main__":

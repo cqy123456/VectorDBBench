@@ -2,8 +2,6 @@ from vectordb_bench.backend.cases import CaseType
 
 drop_old = True
 
-task_label = "knowhere_ci"
-
 case_ids: list[CaseType] = [
     CaseType.PerformanceCohereInternal,
     CaseType.PerformanceOpenAIInternal,
@@ -26,7 +24,17 @@ def get_ivfflat_params():
     }
 
 
-def get_hnsw_params():
+def get_hnsw_params(with_cardinal: bool = False):
+    if with_cardinal:
+        return {
+            "build": {
+                "efConstruction": 360,
+                "M": 30,
+            },
+            "search": {
+                "ef": [50, 100, 200, 400],
+            },
+        }
     return {
         "build": {
             "efConstruction": 360,
@@ -38,7 +46,7 @@ def get_hnsw_params():
     }
 
 
-def get_diskann_params(num_rows: int, dim: int) -> dict:
+def get_diskann_params(num_rows: int, dim: int, with_cardinal: bool = False) -> dict:
     pq_code_budget_gb = num_rows * dim * 4 * 0.125 / 1024 / 1024 / 1024
     search_cache_budget_gb = num_rows * dim * 4 * 0.125 / 1024 / 1024 / 1024
     diskann_params = {
@@ -48,9 +56,10 @@ def get_diskann_params(num_rows: int, dim: int) -> dict:
             "search_list_size": 128,
             "pq_code_budget_gb": pq_code_budget_gb,
             "search_cache_budget_gb": search_cache_budget_gb,
+            "with_cardinal": with_cardinal,
         },
         "search": {
-            "search_list_size": [100, 200, 400],
+            "search_list_size": [100, 150],
         },
     }
     return diskann_params

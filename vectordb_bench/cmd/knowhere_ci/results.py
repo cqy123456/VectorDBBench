@@ -1,11 +1,11 @@
 from vectordb_bench.interface import benchMarkRunner
-from vectordb_bench.cmd.knowhere_ci.config import task_label
 from vectordb_bench.models import CaseResult
 import json
 
 
-def get_results():
+def get_results(with_cardinal: bool = False):
     _results = benchMarkRunner.get_results()
+    task_label = "cardinal_ci" if with_cardinal else "knowhere_ci"
     results = [res for res in _results if res.task_label == task_label]
     case_results: list[CaseResult] = []
     for res in results:
@@ -32,7 +32,7 @@ def get_results():
         data["metric_type"] = dataset.metric_type.value
 
         db_config = task_config.db_config
-        data["index_type"] = db_config.index_type
+        data["index_type"] = f"{db_config.index_type}_CARDINAL" if with_cardinal else db_config.index_type
         build_params = db_config.config_json
         del build_params["index_type"]
         data["build_params"] = json.dumps(build_params)

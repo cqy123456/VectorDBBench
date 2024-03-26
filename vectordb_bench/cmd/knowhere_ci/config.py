@@ -56,7 +56,6 @@ def get_diskann_params(num_rows: int, dim: int, with_cardinal: bool = False) -> 
             "search_list_size": 128,
             "pq_code_budget_gb": pq_code_budget_gb,
             "search_cache_budget_gb": search_cache_budget_gb,
-            "with_cardinal": with_cardinal,
         },
         "search": {
             "search_list_size": [100, 150],

@@ -16,7 +16,7 @@ class config:
     
     # example: mount -t nfs 172.168.70.248:/zilliz/milvus /home/nas
     NAS_ADDRESS = env.path("NAS_ADDRESS", "/home/nas/milvus/hybrid_search")
-    LIBRARY_TEST_NQ = env.int("LIBRARY_TEST_NQ", 10_000)
+    LIBRARY_TEST_NQ = env.int("LIBRARY_TEST_NQ", 20_000)
 
     DROP_OLD = env.bool("DROP_OLD", True)
     USE_SHUFFLED_DATA = env.bool("USE_SHUFFLED_DATA", True)

@@ -4,10 +4,6 @@ from vectordb_bench.backend.clients.knowhere.config import (
     KnowhereConfig,
     KnowhereIndexConfig,
 )
-from vectordb_bench.backend.clients.knowhere_cloud.config import (
-    KnowhereCloudConfig,
-    KnowhereCloudIndexConfig,
-)
 from vectordb_bench.models import CaseConfig, TaskConfig
 import json
 from vectordb_bench.cmd.knowhere_ci.config import (
@@ -96,9 +92,9 @@ def knowhere_hnsw_tasks(case_ids: list[CaseType], with_cardinal: bool = False) -
 
 
 def knowhere_diskann_tasks(case_ids: list[CaseType], with_cardinal: bool = False) -> list[TaskConfig]:
-    """use knowherecloud client to test knowherw-diskann"""
+    """use knowhere client to test knowherw-diskann"""
     tasks: list[TaskConfig] = []
-    db = DB.KnowhereCloud
+    db = DB.Knowhere
     index_type = "DISKANN"
 
     for case_id in case_ids:
@@ -110,7 +106,7 @@ def knowhere_diskann_tasks(case_ids: list[CaseType], with_cardinal: bool = False
             num_rows=num_rows, dim=dim, with_cardinal=with_cardinal)
         build_config = diskann_params["build"]
         db_label = f"cardinal-{index_type}" if with_cardinal else f"knowhere-{index_type}"
-        db_config = KnowhereCloudConfig(
+        db_config = KnowhereConfig(
             index_type=index_type,
             config=json.dumps(build_config)[1:-1],
             db_label=db_label,
@@ -119,7 +115,7 @@ def knowhere_diskann_tasks(case_ids: list[CaseType], with_cardinal: bool = False
         )
 
         for search_list_size in diskann_params["search"]["search_list_size"]:
-            db_case_config = KnowhereCloudIndexConfig(
+            db_case_config = KnowhereIndexConfig(
                 search_list_size=search_list_size)
             tasks.append(
                 TaskConfig(

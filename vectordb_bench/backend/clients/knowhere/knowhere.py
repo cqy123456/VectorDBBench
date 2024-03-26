@@ -5,6 +5,8 @@ from ..api import VectorDB, DBCaseConfig, DBConfig, IndexType
 from .config import KnowhereConfig, KnowhereIndexConfig
 import pathlib
 import json
+import os
+import struct
 
 log = logging.getLogger(__name__)
 
@@ -17,6 +19,7 @@ class Knowhere(VectorDB):
         db_case_config: KnowhereIndexConfig,
         drop_old: bool = False,
         name: str = "Knowhere",
+        vectors_file="train_vectors.fbin",
         tmp_dir_path="./vectordb_bench/results/tmp_knowhere/",
         **kwargs,
     ):
@@ -25,29 +28,40 @@ class Knowhere(VectorDB):
         self.case_config = db_case_config
         self.dim = dim
         self.config = json.loads(f'{{{self.db_config.get("config")}}}')
+        self.index_type = self.db_config.get("index_type")
         self.config["dim"] = dim
         self.build_threads = db_config.get("build_threads", 2)
         self.search_threads = db_config.get("search_threads", 2)
 
         import knowhere
-        
         knowhere.SetBuildThreadPool(self.build_threads)
         knowhere.SetSearchThreadPool(self.search_threads)
 
         self.version = knowhere.GetCurrentVersion()
-        tmp_dir = pathlib.Path(tmp_dir_path)
-        if not tmp_dir.exists():
-            tmp_dir.mkdir(parents=True)
-        self.indexFile = tmp_dir_path + (
-            self.db_config.get("index_type")
-            + f"_{db_case_config.metric_type.value}_{dim}d_"
+        log.info(f"knowhere version - {self.version}")
+        self.index_file_name = (
+            self.index_type
+            + "_"
             + db_config.get("config")
             .replace('"', "")
             .replace(" ", "")
             .replace(":", "_")
             .replace(",", "_")
-            + ".index"
         )
+        self.index_dir = pathlib.Path(tmp_dir_path)
+        if not self.index_dir.exists():
+            self.index_dir.mkdir(parents=True)
+
+        self.index_file_path = (
+            self.index_dir / self.index_file_name).as_posix()
+        self.vectors_file = (self.index_dir / vectors_file).as_posix()
+        if drop_old:
+            for file in self.index_dir.glob(f"{self.index_file_name}*"):
+                os.remove(file)
+
+        if self.index_type == "DISKANN":
+            self.config["data_path"] = self.vectors_file
+            self.config["index_prefix"] = self.index_file_path
 
         self.index = None
         self.bitset = None
@@ -63,23 +77,38 @@ class Knowhere(VectorDB):
     @contextmanager
     def init(self) -> None:
         import knowhere
-        
+
         knowhere.SetBuildThreadPool(self.build_threads)
         knowhere.SetSearchThreadPool(self.search_threads)
 
-        index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
-        filePath = pathlib.Path(self.indexFile)
-        if filePath.exists():
-            log.info(
-                f"Index file existed; Load the index file and Deserialize; {self.indexFile}"
-            )
-            indexBinarySet = knowhere.GetBinarySet()
-            knowhere.Load(indexBinarySet, self.indexFile)
-            index.Deserialize(indexBinarySet)
+        index = knowhere.CreateIndex(self.index_type, self.version)
+
+        index_files = self.index_dir.glob(f"{self.index_file_name}*")
+        index_exsited = len(list(index_files)) >= 1
+
+        if index_exsited:
+            if self.index_type == "DISKANN":
+                log.info(
+                    f"[DISKANN] Index file existed; Load the index file and Deserialize; {self.index_file_path}"
+                )
+                index.Deserialize(knowhere.GetBinarySet(),
+                                  json.dumps(self.config))
+            else:
+                log.info(
+                    f"[{self.index_type}] Index file existed; Load the index file and Deserialize; {self.index_file_path}"
+                )
+                indexBinarySet = knowhere.GetBinarySet()
+                knowhere.Load(indexBinarySet, self.index_file_path)
+                index.Deserialize(indexBinarySet)
+
             log.info(f"Index ready")
+        else:
+            log.info(f"index file not existed.")
+
         self.index = index
 
         yield
+
         self.index = None
         self.bitset = None
 
@@ -89,25 +118,49 @@ class Knowhere(VectorDB):
         metadata: list[int],
         **kwargs,
     ) -> (int, Exception):
-        log.info(f"Start building index with {len(embeddings)} vectors")
         import knowhere
-        
-        knowhere.SetBuildThreadPool(self.build_threads)
-        knowhere.SetSearchThreadPool(self.search_threads)
 
-        data = knowhere.ArrayToDataSet(embeddings)
-        self.config.update(self.case_config.index_param())
-        log.info(
-            f"Build config: {self.config}, {self.db_config.get('index_type')}, {self.version}"
-        )
-        index = knowhere.CreateIndex(self.db_config.get("index_type"), self.version)
-        index.Build(data, json.dumps(self.config))
-        indexBinarySet = knowhere.GetBinarySet()
-        log.info(f"Serialize the trained index to BinarySet")
-        index.Serialize(indexBinarySet)
-        log.info(f"Dump the BinarySet to file - {self.indexFile}")
-        knowhere.Dump(indexBinarySet, self.indexFile)
-        log.info(f"Dump Finished")
+        if len(embeddings) == 0:
+            return 0, None
+
+        if self.index_type == "DISKANN":
+            log.info(f"Dump train vectors to {self.vectors_file}")
+            with open(self.vectors_file, "wb") as f:
+                f.write(struct.pack("I", len(embeddings)))
+                f.write(struct.pack("I", len(embeddings[0])))
+                # Writing embedding vectors to the binary file
+                for element in embeddings:
+                    for value in element:
+                        f.write(struct.pack("f", value))
+                f.close()
+
+            log.info(f"Start building index with {len(embeddings)} vectors")
+            self.config.update(self.case_config.index_param())
+            log.info(f"build config: {self.config}")
+            index = knowhere.CreateIndex(self.index_type, self.version)
+            index.Build(knowhere.GetNullDataSet(), json.dumps(self.config))
+            log.info(
+                f"Serialize and dump the trained index to {self.index_file_path}")
+            index.Serialize(knowhere.GetNullDataSet())
+            log.info(f"Dump Finished")
+
+        else:
+            log.info(f"Start building index with {len(embeddings)} vectors")
+
+            data = knowhere.ArrayToDataSet(embeddings)
+            self.config.update(self.case_config.index_param())
+            log.info(
+                f"Build config: {self.config}, {self.db_config.get('index_type')}, {self.version}"
+            )
+            index = knowhere.CreateIndex(
+                self.db_config.get("index_type"), self.version)
+            index.Build(data, json.dumps(self.config))
+            indexBinarySet = knowhere.GetBinarySet()
+            log.info(f"Serialize the trained index to BinarySet")
+            index.Serialize(indexBinarySet)
+            log.info(f"Dump the BinarySet to file - {self.index_file_path}")
+            knowhere.Dump(indexBinarySet, self.index_file_path)
+            log.info(f"Dump Finished")
 
         return len(embeddings), None
 

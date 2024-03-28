@@ -58,7 +58,7 @@ def get_diskann_params(num_rows: int, dim: int, with_cardinal: bool = False) -> 
             "search_cache_budget_gb": search_cache_budget_gb,
         },
         "search": {
-            "search_list_size": [100, 150],
+            "search_list_size": [100, 200, 400],
         },
     }
     return diskann_params

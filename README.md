@@ -7,7 +7,7 @@
 ## Quick Start
 ### Prerequirement
 ``` shell
-python >= 3.11
+python >= 3.10
 ```
 ### Install
 **Install vectordb-bench with only PyMilvus**

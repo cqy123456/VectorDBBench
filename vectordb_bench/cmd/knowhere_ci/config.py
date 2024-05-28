@@ -3,10 +3,11 @@ from vectordb_bench.backend.cases import CaseType
 drop_old = True
 
 case_ids: list[CaseType] = [
-    CaseType.PerformanceCohereInternal,
-    CaseType.PerformanceOpenAIInternal,
-    CaseType.PerformanceGIST768Internal,
-    CaseType.PerformanceText2imgInternal,
+    CaseType.Performance768D1M
+    #CaseType.PerformanceCohereInternal,
+    # CaseType.PerformanceOpenAIInternal,
+    # CaseType.PerformanceGIST768Internal,
+    # CaseType.PerformanceText2imgInternal,
 ]
 
 build_threads = 8
@@ -58,7 +59,7 @@ def get_diskann_params(num_rows: int, dim: int, with_cardinal: bool = False) -> 
             "search_cache_budget_gb": search_cache_budget_gb,
         },
         "search": {
-            "search_list_size": [100, 200, 400],
+            "search_list_size": [100],
         },
     }
     return diskann_params

@@ -19,10 +19,10 @@ from vectordb_bench.cmd.knowhere_ci.config import (
 def get_tasks(with_cardinal: bool = False) -> list[TaskConfig]:
     tasks: list[TaskConfig] = []
 
-    tasks += knowhere_ivfflat_tasks(case_ids=case_ids,
-                                    with_cardinal=with_cardinal)
-    tasks += knowhere_hnsw_tasks(case_ids=case_ids,
-                                 with_cardinal=with_cardinal)
+    # tasks += knowhere_ivfflat_tasks(case_ids=case_ids,
+    #                                 with_cardinal=with_cardinal)
+    # # tasks += knowhere_hnsw_tasks(case_ids=case_ids,
+    # #                              with_cardinal=with_cardinal)
     tasks += knowhere_diskann_tasks(case_ids=case_ids,
                                     with_cardinal=with_cardinal)
 

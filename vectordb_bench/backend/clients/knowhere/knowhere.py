@@ -7,9 +7,11 @@ import pathlib
 import json
 import os
 import struct
+from bfloat16 import bfloat16
+import numpy as np
 
 log = logging.getLogger(__name__)
-
+data_type = bfloat16
 
 class Knowhere(VectorDB):
     def __init__(
@@ -81,7 +83,7 @@ class Knowhere(VectorDB):
         knowhere.SetBuildThreadPool(self.build_threads)
         knowhere.SetSearchThreadPool(self.search_threads)
 
-        index = knowhere.CreateIndex(self.index_type, self.version)
+        index = knowhere.CreateIndex(self.index_type, self.version, data_type)
 
         index_files = self.index_dir.glob(f"{self.index_file_name}*")
         index_exsited = len(list(index_files)) >= 1
@@ -125,19 +127,21 @@ class Knowhere(VectorDB):
 
         if self.index_type == "DISKANN":
             log.info(f"Dump train vectors to {self.vectors_file}")
+            if data_type == np.float32:
+                new_embeddings = embeddings
+            else: 
+                new_embeddings = embeddings.astype(data_type)
             with open(self.vectors_file, "wb") as f:
-                f.write(struct.pack("I", len(embeddings)))
-                f.write(struct.pack("I", len(embeddings[0])))
                 # Writing embedding vectors to the binary file
-                for element in embeddings:
-                    for value in element:
-                        f.write(struct.pack("f", value))
+                n, d = new_embeddings.shape
+                np.array([n, d], dtype='uint32').tofile(f)
+                new_embeddings.tofile(f)
                 f.close()
 
             log.info(f"Start building index with {len(embeddings)} vectors")
             self.config.update(self.case_config.index_param())
             log.info(f"build config: {self.config}")
-            index = knowhere.CreateIndex(self.index_type, self.version)
+            index = knowhere.CreateIndex(self.index_type, self.version, data_type)
             index.Build(knowhere.GetNullDataSet(), json.dumps(self.config))
             log.info(
                 f"Serialize and dump the trained index to {self.index_file_path}")
@@ -153,7 +157,7 @@ class Knowhere(VectorDB):
                 f"Build config: {self.config}, {self.db_config.get('index_type')}, {self.version}"
             )
             index = knowhere.CreateIndex(
-                self.db_config.get("index_type"), self.version)
+                self.db_config.get("index_type"), self.version, data_type)
             index.Build(data, json.dumps(self.config))
             indexBinarySet = knowhere.GetBinarySet()
             log.info(f"Serialize the trained index to BinarySet")
@@ -179,7 +183,7 @@ class Knowhere(VectorDB):
         filters: dict | None = None,
     ) -> list[int]:
         import knowhere
-
+        queryData = queryData.astype(data_type)
         query = knowhere.ArrayToDataSet(queryData)
         self.config.update(self.case_config.search_param())
         self.config["k"] = k

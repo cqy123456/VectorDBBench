@@ -7,6 +7,7 @@ from vectordb_bench.interface import benchMarkRunner
 def run_for_knowhere(with_cardinal: bool = False):
     task_label = "cardinal_ci" if with_cardinal else "knowhere_ci"
     tasks = get_tasks(with_cardinal)
+    print("get tasks", tasks)
     benchMarkRunner.set_drop_old(drop_old)
     benchMarkRunner.run(tasks, task_label)
 

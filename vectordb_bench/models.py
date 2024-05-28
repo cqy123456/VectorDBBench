@@ -1,7 +1,8 @@
 import logging
 import pathlib
 from datetime import date
-from typing import Self
+#from typing import Self
+from typing_extensions import Self
 from enum import Enum
 
 import ujson
@@ -185,7 +186,7 @@ class TestResult(BaseModel):
         def append_return(x, y):
             x.append(y)
             return x
-
+        print("filtered_results", filtered_results)
         max_db = max(map(len, [f.task_config.db.name for f in filtered_results]))
         max_db_labels = max(map(len, [f.task_config.db_config.db_label for f in filtered_results])) + 3
         max_case = max(map(len, [f.task_config.case_config.case_id.name for f in filtered_results]))

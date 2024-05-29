@@ -7,10 +7,11 @@ from typing import Iterable, Type
 
 from pymilvus import Collection, utility
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusException
-
+import numpy as np
 from ..api import VectorDB, DBCaseConfig, DBConfig, IndexType
 from .config import MilvusConfig, _milvus_case_config
-
+data_type = np.float16
+milvus_data_type = DataType.FLOAT16_VECTOR
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class Milvus(VectorDB):
             fields = [
                 FieldSchema(self._primary_field, DataType.INT64, is_primary=True),
                 FieldSchema(self._scalar_field, DataType.INT64),
-                FieldSchema(self._vector_field, DataType.FLOAT_VECTOR, dim=dim)
+                FieldSchema(self._vector_field, milvus_data_type, dim=dim)
             ]
 
             log.info(f"{self.name} create collection: {self.collection_name}")
@@ -164,13 +165,17 @@ class Milvus(VectorDB):
         assert self.col is not None
         assert len(embeddings) == len(metadata)
         insert_count = 0
+        
         try:
             for batch_start_offset in range(0, len(embeddings), self.batch_size):
                 batch_end_offset = min(batch_start_offset + self.batch_size, len(embeddings))
+                vec_list = []
+                for vec in embeddings[batch_start_offset:batch_end_offset]:
+                    vec_list.append(np.array(vec, dtype=data_type))
                 insert_data = [
                         metadata[batch_start_offset : batch_end_offset],
                         metadata[batch_start_offset : batch_end_offset],
-                        embeddings[batch_start_offset : batch_end_offset],
+                        vec_list,
                 ]
                 res = self.col.insert(insert_data)
                 insert_count += len(res.primary_keys)
@@ -194,8 +199,9 @@ class Milvus(VectorDB):
         expr = f"{self._scalar_field} {filters.get('metadata')}" if filters else ""
 
         # Perform the search.
+        query_data = np.array(query, dtype=data_type)
         res = self.col.search(
-            data=[query],
+            data=[query_data],
             anns_field=self._vector_field,
             param=self.case_config.search_param(),
             limit=k,

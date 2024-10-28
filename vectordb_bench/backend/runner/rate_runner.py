@@ -35,7 +35,6 @@ class RatedMultiThreadingInsertRunner:
     @time_it
     def run_with_rate(self, q: mp.Queue):
         with ThreadPoolExecutor(max_workers=mp.cpu_count()) as executor:
-            self.db.init()
             executing_futures = []
 
             @time_it
@@ -50,30 +49,31 @@ class RatedMultiThreadingInsertRunner:
                         return False
                 return rate == self.batch_rate
 
-            while True:
-                start_time = time.perf_counter()
-                finished, elapsed_time = submit_by_rate()
-                if finished is True:
-                    q.put(None, block=True)
-                    log.info(f"End of dataset, left unfinished={len(executing_futures)}")
-                    return
+            with self.db.init():
+                while True:
+                    start_time = time.perf_counter()
+                    finished, elapsed_time = submit_by_rate()
+                    if finished is True:
+                        q.put(None, block=True)
+                        log.info(f"End of dataset, left unfinished={len(executing_futures)}")
+                        return
 
-                q.put(True, block=False)
-                wait_interval = 1 - elapsed_time if elapsed_time < 1 else 0.001
+                    q.put(True, block=False)
+                    wait_interval = 1 - elapsed_time if elapsed_time < 1 else 0.001
 
-                e, completed = is_futures_completed(executing_futures, wait_interval)
-                if completed is True:
-                    ex = get_future_exceptions(executing_futures)
-                    if ex is not None:
-                        log.warn(f"task error, terminating, err={ex}")
-                        q.put(None)
-                        executor.shutdown(wait=True, cancel_futures=True)
-                        raise ex
+                    e, completed = is_futures_completed(executing_futures, wait_interval)
+                    if completed is True:
+                        ex = get_future_exceptions(executing_futures)
+                        if ex is not None:
+                            log.warn(f"task error, terminating, err={ex}")
+                            q.put(None)
+                            executor.shutdown(wait=True, cancel_futures=True)
+                            raise ex
+                        else:
+                            log.debug(f"Finished {len(executing_futures)} insert-{config.NUM_PER_BATCH} task in 1s, wait_interval={wait_interval:.2f}")
+                        executing_futures = []
                     else:
-                        log.debug(f"Finished {len(executing_futures)} insert-{config.NUM_PER_BATCH} task in 1s, wait_interval={wait_interval:.2f}")
-                    executing_futures = []
-                else:
-                    log.warning(f"Failed to finish tasks in 1s, {e}, waited={wait_interval:.2f}, try to check the next round")
-                dur = time.perf_counter() - start_time
-                if dur < 1:
-                    time.sleep(1 - dur)
+                        log.warning(f"Failed to finish tasks in 1s, {e}, waited={wait_interval:.2f}, try to check the next round")
+                    dur = time.perf_counter() - start_time
+                    if dur < 1:
+                        time.sleep(1 - dur)

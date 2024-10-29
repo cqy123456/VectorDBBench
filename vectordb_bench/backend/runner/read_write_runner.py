@@ -101,12 +101,16 @@ class ReadWriteRunner(MultiProcessingSearchRunner, RatedMultiThreadingInsertRunn
                 batch += 1
 
         log.info("Insert 100% done, start optimize")
-        with self.db.init():
-            self.db.optimize()
+        with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(self._task)
+            res = future.result()
 
-
-        log.info("Optimize done, start conc search")
+        log.info(f"Optimize done, {res}, start conc search")
         max_qps = self.run_by_dur(300)
         res.append((1000, max_qps, recall))
 
         return res
+
+    def _task(self) -> None:
+        with self.db.init():
+            self.db.optimize()

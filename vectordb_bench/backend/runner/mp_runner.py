@@ -228,7 +228,7 @@ class MultiProcessingSearchRunner:
                     log.debug(f"({mp.current_process().name:16}) search_count: {count}, latest_latency={time.perf_counter()-s}")
 
         total_dur = round(time.perf_counter() - start_time, 4)
-        log.dubug(
+        log.debug(
             f"{mp.current_process().name:16} search {self.duration}s: "
             f"actual_dur={total_dur}s, count={count}, qps in this process: {round(count / total_dur, 4):3}"
          )

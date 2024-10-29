@@ -1,3 +1,4 @@
+from typing import Iterable
 import argparse
 from vectordb_bench.backend.dataset import Dataset, DatasetSource
 from vectordb_bench.backend.runner.rate_runner import RatedMultiThreadingInsertRunner
@@ -29,8 +30,8 @@ def test_rate_runner(db, insert_rate):
     _, t = runner.run_with_rate()
     log.info(f"insert run done, time={t}")
 
-def test_read_write_runner(db, insert_rate, conc: list, local: bool=False):
-    cohere = Dataset.COHERE.manager(10_000_000)
+def test_read_write_runner(db, insert_rate, conc: list, search_stage: Iterable[float], stage_search_dur: int, local: bool=False):
+    cohere = Dataset.COHERE.manager(1_000_000)
     if local is True:
         source = DatasetSource.AliyunOSS
     else:
@@ -42,6 +43,8 @@ def test_read_write_runner(db, insert_rate, conc: list, local: bool=False):
         db=db,
         dataset=cohere,
         insert_rate=insert_rate,
+        search_stage=search_stage,
+        stage_search_dur=stage_search_dur,
         concurrencies=conc
     )
     rw_runner.run_read_write()
@@ -60,17 +63,31 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--insert_rate", type=int, default="1000", help="insert entity row count per seconds, cps")
     parser.add_argument("-d", "--db", type=str, default=DB.Milvus.name, help="db name")
-    parser.add_argument("-c", "--conc", type=list, default=(1, 15, 50), help="search conc")
+    #  parser.add_argument("-c", "--conc", type=list, default=(1, 15, 50), help="search conc")
+    #  parser.add_argument("-s", "--search_stage", type=list, default=(0.5, 0.6, 0.7, 0.8, 0.9, 1.0), help="search stage")
+    parser.add_argument("-t", "--duration", type=int, default=120, help="stage search duration in seconds")
     parser.add_argument("--use_s3", action='store_true', help="whether to use S3 dataset")
 
     flags = parser.parse_args()
 
     # TODO read uri, user, password from .env
     config = {
-            "uri": "http://localhost:19530",
+        "uri": "http://localhost:19530",
         "user": "", 
         "password": "",
     }
 
+    #  conc = (1, 15, 50)
+    #  search_stage = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0)
+
+    conc = (50,)
+    search_stage = (0.0,)
+
     db = get_db(flags.db, config)
-    test_read_write_runner(db, flags.insert_rate, flags.conc, flags.use_s3)
+    test_read_write_runner(
+        db=db,
+        insert_rate=flags.insert_rate,
+        conc=conc,
+        search_stage=search_stage,
+        stage_search_dur=flags.duration,
+        local=flags.use_s3)

@@ -30,7 +30,7 @@ def test_rate_runner(db, insert_rate):
     _, t = runner.run_with_rate()
     log.info(f"insert run done, time={t}")
 
-def test_read_write_runner(db, insert_rate, conc: list, search_stage: Iterable[float], stage_search_dur: int, local: bool=False):
+def test_read_write_runner(db, insert_rate, conc: list, search_stage: Iterable[float], stage_search_dur: int, local: bool=False, flush_percent: float=1.0):
     cohere = Dataset.COHERE.manager(1_000_000)
     if local is True:
         source = DatasetSource.AliyunOSS
@@ -45,7 +45,8 @@ def test_read_write_runner(db, insert_rate, conc: list, search_stage: Iterable[f
         insert_rate=insert_rate,
         search_stage=search_stage,
         stage_search_dur=stage_search_dur,
-        concurrencies=conc
+        concurrencies=conc,
+        flush_percent=flush_percent
     )
     rw_runner.run_read_write()
 
@@ -67,13 +68,14 @@ if __name__ == "__main__":
     #  parser.add_argument("-s", "--search_stage", type=list, default=(0.5, 0.6, 0.7, 0.8, 0.9, 1.0), help="search stage")
     parser.add_argument("-t", "--duration", type=int, default=120, help="stage search duration in seconds")
     parser.add_argument("--use_s3", action='store_true', help="whether to use S3 dataset")
+    parser.add_argument("-p", "--flush_percent", type=float, default=1.0, help="Insert percentage to flush")
 
     flags = parser.parse_args()
 
     # TODO read uri, user, password from .env
     config = {
         "uri": "http://localhost:19530",
-        "user": "", 
+        "user": "",
         "password": "",
     }
 
@@ -90,4 +92,7 @@ if __name__ == "__main__":
         conc=conc,
         search_stage=search_stage,
         stage_search_dur=flags.duration,
-        local=flags.use_s3)
+        local=flags.use_s3,
+        flush_percent=flags.flush_percent,
+    )
+

@@ -19,11 +19,15 @@ class RatedMultiThreadingInsertRunner:
         rate: int, # numRows per second
         db: api.VectorDB,
         dataset_iter: DataSetIterator,
+        batch_num: int,
         normalize: bool = False,
+        flush_percent: float = 1.0,
         timeout: float | None = None,
     ):
         self.timeout = timeout if isinstance(timeout, (int, float)) else None
         self.dataset = dataset_iter
+        self.batch_num = batch_num
+        self.flush_percent = flush_percent
         self.db = db
         self.normalize = normalize
         self.insert_rate = rate
@@ -35,6 +39,8 @@ class RatedMultiThreadingInsertRunner:
     @time_it
     def run_with_rate(self, q: mp.Queue):
         with ThreadPoolExecutor(max_workers=mp.cpu_count()) as executor:
+            flush_batch = self.batch_num * self.flush_percent
+            batch = 0
             executing_futures = []
 
             @time_it
@@ -53,6 +59,11 @@ class RatedMultiThreadingInsertRunner:
                 while True:
                     start_time = time.perf_counter()
                     finished, elapsed_time = submit_by_rate()
+                    batch += 1
+                    if batch == flush_batch:
+                        log.info(f"Insert {self.flush_percent*100}% done, flush...")
+                        self.db.col.flush()
+
                     if finished is True:
                         q.put(None, block=True)
                         log.info(f"End of dataset, left unfinished={len(executing_futures)}")

@@ -26,6 +26,7 @@ class ReadWriteRunner(MultiProcessingSearchRunner, RatedMultiThreadingInsertRunn
         concurrencies: Iterable[int] = (1, 15, 50),
         search_stage: Iterable[float] = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
         stage_search_dur: int = 120, # seconds, TODO, choose duration based on dur of insert 10% data
+        flush_percent: float = 1.0,
         timeout: float | None = None,
     ):
         self.insert_rate = insert_rate
@@ -39,6 +40,8 @@ class ReadWriteRunner(MultiProcessingSearchRunner, RatedMultiThreadingInsertRunn
         if normalize:
             test_emb = test_emb / np.linalg.norm(test_emb, axis=1)[:, np.newaxis]
         test_emb = test_emb.tolist()
+
+        self.total_batch = math.ceil(self.data_volume / self.insert_rate)
 
         MultiProcessingSearchRunner.__init__(
             self,
@@ -54,7 +57,9 @@ class ReadWriteRunner(MultiProcessingSearchRunner, RatedMultiThreadingInsertRunn
             rate=insert_rate,
             db=db,
             dataset_iter=iter(dataset),
+            batch_num=self.total_batch,
             normalize=normalize,
+            flush_percent=flush_percent,
         )
         self.serial_search_runner = SerialSearchRunner(
             db=db,
@@ -67,9 +72,10 @@ class ReadWriteRunner(MultiProcessingSearchRunner, RatedMultiThreadingInsertRunn
         futures = []
         with mp.Manager() as m:
             q = m.Queue()
+            flush_sig = m.Queue()
             with concurrent.futures.ProcessPoolExecutor(mp_context=mp.get_context("spawn"), max_workers=2) as executor:
                 futures.append(executor.submit(self.run_with_rate, q))
-                futures.append(executor.submit(self.run_search_by_sig, q))
+                futures.append(executor.submit(self.run_search_by_sig, q, flush_sig))
 
                 for future in concurrent.futures.as_completed(futures):
                     res = future.result()
@@ -77,19 +83,17 @@ class ReadWriteRunner(MultiProcessingSearchRunner, RatedMultiThreadingInsertRunn
 
         log.info("Concurrent read write all done")
 
-
-    def run_search_by_sig(self, q):
+    def run_search_by_sig(self, q, flush_sig):
         res = []
-        total_batch = math.ceil(self.data_volume / self.insert_rate)
         batch = 1
         recall = 'x'
 
         for stage in self.search_stage:
-            target_batch = int(total_batch * stage)
+            target_batch = int(self.total_batch * stage)
             while q.get(block=True):
                 if batch >= target_batch:
                     perc = int(stage * 100)
-                    log.info(f"Insert {perc}% done, total batch={total_batch}")
+                    log.info(f"Insert {perc}% done, total batch={self.total_batch}")
                     log.info(f"Serial search - {perc}% start")
                     recall, ndcg, p99 =self.serial_search_runner.run()
 
@@ -103,7 +107,7 @@ class ReadWriteRunner(MultiProcessingSearchRunner, RatedMultiThreadingInsertRunn
         log.info("Insert 100% done, start optimize")
         with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
             future = executor.submit(self._task)
-            res = future.result()
+            _ = future.result()
 
         log.info(f"Optimize done, {res}, start conc search")
         max_qps = self.run_by_dur(300)

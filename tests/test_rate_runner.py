@@ -4,7 +4,7 @@ from vectordb_bench.backend.dataset import Dataset, DatasetSource
 from vectordb_bench.backend.runner.rate_runner import RatedMultiThreadingInsertRunner
 from vectordb_bench.backend.runner.read_write_runner import ReadWriteRunner
 from vectordb_bench.backend.clients import DB, VectorDB
-from vectordb_bench.backend.clients.milvus.config import FLATConfig
+from vectordb_bench.backend.clients.milvus.config import HNSWConfig
 from vectordb_bench.backend.clients.zilliz_cloud.config import AutoIndexConfig
 
 import logging
@@ -31,7 +31,7 @@ def test_rate_runner(db, insert_rate):
     log.info(f"insert run done, time={t}")
 
 def test_read_write_runner(db, insert_rate, conc: list, search_stage: Iterable[float], stage_search_dur: int, local: bool=False, flush_percent: float=1.0):
-    cohere = Dataset.COHERE.manager(1_000_000)
+    cohere = Dataset.COHERE.manager(10_000_000)
     if local is True:
         source = DatasetSource.AliyunOSS
     else:
@@ -53,9 +53,9 @@ def test_read_write_runner(db, insert_rate, conc: list, search_stage: Iterable[f
 
 def get_db(db: str, config: dict) -> VectorDB:
     if db == DB.Milvus.name:
-        return DB.Milvus.init_cls(dim=768, db_config=config, db_case_config=FLATConfig(metric_type="COSINE"), drop_old=True, pre_load=True)
+        return DB.Milvus.init_cls(dim=768, db_config=config, db_case_config=HNSWConfig(metric_type="L2", M=36, efConstruction=128,ef=110), drop_old=True, pre_load=True)
     elif db == DB.ZillizCloud.name:
-        return DB.ZillizCloud.init_cls(dim=768, db_config=config, db_case_config=AutoIndexConfig(metric_type="COSINE"), drop_old=True, pre_load=True)
+        return DB.ZillizCloud.init_cls(dim=768, db_config=config, db_case_config=AutoIndexConfig(metric_type="L2"), drop_old=True, pre_load=True)
     else:
         raise ValueError(f"unknown db: {db}")
 
@@ -73,10 +73,21 @@ if __name__ == "__main__":
     flags = parser.parse_args()
 
     # TODO read uri, user, password from .env
+#     config = {
+#         # debug
+#         #"uri":"https://in01-615961829bf1848.gcp-us-west1.vectordb-uat3.zillizcloud.com:443",
+#         #"user": "root",
+#         #"password": "p8.qhT+0=GGv%[@-Pxp!OJGn/halvmQd",
+#         # release 
+#         #"uri":"https://in01-81de0b2fec177b4.gcp-us-west1.vectordb-uat3.zillizcloud.com",
+#         #"user":"root",
+#         #"password":"M0-dTfn26Y:q?b[@&1EM=24vcsK7e}c[",
+#         "uri":"https://in01-0a9943bfff1f434.gcp-us-west1.vectordb-uat3.zillizcloud.com:443",
+#         "user":"root",
+#         "password":"C4%}}PBuk0,A&bdBUm06]=x|s/g$S}Dz",
+#    }
     config = {
-        "uri": "http://localhost:19530",
-        "user": "",
-        "password": "",
+         "uri":"http://localhost:19530",
     }
 
     #  conc = (1, 15, 50)
